@@ -1,0 +1,23 @@
+Put role-based state mp3 files here (exact naming):
+
+- <role>_idle.mp3
+- <role>_writing.mp3
+- <role>_researching.mp3
+- <role>_executing.mp3
+- <role>_syncing.mp3
+- <role>_error.mp3
+
+Current default role in theme.json is:
+- songjiang
+
+So files should be:
+- songjiang_idle.mp3
+- songjiang_writing.mp3
+- songjiang_researching.mp3
+- songjiang_executing.mp3
+- songjiang_syncing.mp3
+- songjiang_error.mp3
+
+Tip:
+- Keep each clip short and loop-friendly.
+- If browser blocks autoplay, click anywhere once or click the "音效: ON/OFF" button.

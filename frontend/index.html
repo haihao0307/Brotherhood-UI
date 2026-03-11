@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brotherhood-UI</title>
+  <link rel="stylesheet" href="/static/css/app.css?v={{VERSION_TIMESTAMP}}" />
+</head>
+<body>
+  <header id="topbar">
+    <div class="left">
+      <div id="brand">Brotherhood-UI</div>
+      <button class="btn" id="coordsBtn" title="显示鼠标坐标/点击坐标复制">坐标: OFF</button>
+      <button class="btn" id="audioBtn" title="状态音效开关">音效: ON</button>
+    </div>
+    <div class="right">
+      <div id="coordsText">x: -, y: -</div>
+      <div id="hintText">提示: 开启坐标后，点击画布复制坐标</div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div id="game-container"></div>
+
+    <div id="bottom-panels">
+      <section id="control-panel" class="panel">
+        <div class="panel-title">控制面板</div>
+        <div class="panel-body">
+          <div class="field">
+            <label for="detailInput">文案</label>
+            <input id="detailInput" type="text" maxlength="80" placeholder="例如：正在写文案..." />
+          </div>
+          <div id="stateButtons" class="grid"></div>
+          <div class="panel-hint">点击按钮会调用后端 `/set_state`，页面会自动更新。</div>
+        </div>
+      </section>
+
+      <section id="memo-panel" class="panel">
+        <div class="panel-title">昨日小记</div>
+        <div class="panel-body">
+          <div id="memoMeta" class="mono muted">加载中...</div>
+          <pre id="memoText" class="memo"></pre>
+          <div id="memoError" class="mono error"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="status-text">状态加载中...</footer>
+
+  <div id="loading-overlay">
+    <div id="loading-title">加载 Brotherhood-UI 主题资源中...</div>
+    <div id="loading-progress-container"><div id="loading-progress-bar"></div></div>
+    <div id="loading-sub">
+      如果你第一次打开看到资源 404：请把你的素材放到 <code>frontend/themes/liangshan/</code>，然后刷新。
+    </div>
+    <div id="error-panel"></div>
+  </div>
+
+  <script>
+    // Replaced by backend/app.py on GET /
+    window.SO_VERSION = '{{VERSION_TIMESTAMP}}';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="/static/js/theme-engine.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/panels/control.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/panels/memo.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app.js?v={{VERSION_TIMESTAMP}}"></script>
+</body>
+</html>

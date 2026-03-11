@@ -1,0 +1,720 @@
+{
+  "name": "liangshan",
+  "label": "梁山主题",
+  "assets": {
+    "bg": {
+      "webp": "/static/themes/liangshan/bg.webp",
+      "png": "/static/themes/liangshan/bg.png"
+    },
+    "bgFg": {
+      "png": "/static/themes/liangshan/bg_fg.png"
+    },
+    "hero": {
+      "png": "/static/themes/liangshan/songjiang_walking-spritesheet.png",
+      "frameWidth": 182,
+      "frameHeight": 230,
+      "frames": 5,
+      "frameRate": 8
+    },
+    "heroStates": {
+      "idle": {
+        "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
+        "frameWidth": 682,
+        "frameHeight": 669,
+        "frames": 17,
+        "frameRate": 4,
+        "scale": 0.19
+      },
+      "writing": {
+        "png": "/static/themes/liangshan/songjiang_writing-spritesheet.png",
+        "frameWidth": 784,
+        "frameHeight": 906,
+        "frames": 10,
+        "frameRate": 4,
+        "scale": 0.14
+      },
+      "researching": {
+        "png": "/static/themes/liangshan/songjiang_researching-spritesheet.png",
+        "frameWidth": 182,
+        "frameHeight": 248,
+        "frames": 7,
+        "frameRate": 2,
+        "scale": 0.52
+      },
+      "executing": {
+        "png": "/static/themes/liangshan/songjiang_executing-spritesheet.png",
+        "frameWidth": 682,
+        "frameHeight": 669,
+        "frames": 9,
+        "frameRate": 4,
+        "scale": 0.19
+      },
+      "syncing": {
+        "png": "/static/themes/liangshan/songjiang_syncing-spritesheet.png",
+        "frameWidth": 791,
+        "frameHeight": 1023,
+        "frames": 5,
+        "frameRate": 4,
+        "scale": 0.13
+      },
+      "error": {
+        "png": "/static/themes/liangshan/songjiang_error-spritesheet.png",
+        "frameWidth": 365,
+        "frameHeight": 275,
+        "frames": 7,
+        "frameRate": 3,
+        "scale": 0.47
+      }
+    },
+    "spritesheets": {
+      "flag": {
+        "png": "/static/themes/liangshan/props/flag_5f.png",
+        "frameWidth": 275,
+        "frameHeight": 768,
+        "frames": 5,
+        "frameRate": 7
+      },
+      "lantern_1": {
+        "png": "/static/themes/liangshan/props/lantern_1-spritesheet.png",
+        "frameWidth": 256,
+        "frameHeight": 256,
+        "frames": 6,
+        "frameRate": 5
+      },
+      "lantern_2": {
+        "png": "/static/themes/liangshan/props/lantern_2-spritesheet.png",
+        "frameWidth": 256,
+        "frameHeight": 256,
+        "frames": 6,
+        "frameRate": 5
+      },
+      "red_candle": {
+        "png": "/static/themes/liangshan/props/red_candle.png",
+        "frameWidth": 256,
+        "frameHeight": 256,
+        "frames": 7,
+        "frameRate": 6
+      }
+    }
+  },
+  "hero": {
+    "role": "songjiang",
+    "scale": 0.56,
+    "origin": {
+      "x": 0.5,
+      "y": 1.0
+    }
+  },
+  "mainHero": {
+    "id": "songjiang",
+    "label": "宋江",
+    "role": "songjiang",
+    "scale": 0.56,
+    "origin": {
+      "x": 0.5,
+      "y": 1.0
+    },
+    "walking": {
+      "png": "/static/themes/liangshan/songjiang_walking-spritesheet.png",
+      "frameWidth": 182,
+      "frameHeight": 230,
+      "frames": 5,
+      "frameRate": 8,
+      "scale": 0.56
+    },
+    "states": {
+      "idle": {
+        "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
+        "frameWidth": 682,
+        "frameHeight": 669,
+        "frames": 17,
+        "frameRate": 4,
+        "scale": 0.19
+      },
+      "idle_a": {
+        "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
+        "frameWidth": 682,
+        "frameHeight": 669,
+        "frames": 17,
+        "frameRate": 4,
+        "scale": 0.19
+      },
+      "idle_b": {
+        "png": "/static/themes/liangshan/songjiang_idle_b-spritesheet.png",
+        "frameWidth": 933,
+        "frameHeight": 933,
+        "frames": 9,
+        "frameRate": 3,
+        "scale": 0.136
+      },
+      "researching": {
+        "png": "/static/themes/liangshan/songjiang_researching-spritesheet.png",
+        "frameWidth": 182,
+        "frameHeight": 248,
+        "frames": 7,
+        "frameRate": 2,
+        "scale": 0.52
+      }
+    }
+  },
+  "supportHeroes": {
+    "wuyong": {
+      "label": "吴用",
+      "role": "wuyong",
+      "scale": 0.19,
+      "origin": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "depth": 140,
+      "states": {
+        "idle": {
+          "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
+          "frameWidth": 682,
+          "frameHeight": 669,
+          "frames": 17,
+          "frameRate": 4,
+          "scale": 0.19
+        },
+        "writing": {
+          "png": "/static/themes/liangshan/wuyong_writing-spritesheet.png",
+          "frameWidth": 256,
+          "frameHeight": 256,
+          "frames": 21,
+          "frameRate": 6,
+          "scale": 0.496
+        }
+      }
+    },
+    "wusong": {
+      "label": "武松",
+      "role": "wusong",
+      "scale": 0.19,
+      "origin": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "depth": 140,
+      "states": {
+        "idle": {
+          "png": "/static/themes/liangshan/wusong_idle-spritesheet.png",
+          "frameWidth": 250,
+          "frameHeight": 250,
+          "frames": 7,
+          "frameRate": 2,
+          "scale": 0.5
+        },
+        "executing": {
+          "png": "/static/themes/liangshan/wusong_executing-spritesheet.png",
+          "frameWidth": 256,
+          "frameHeight": 256,
+          "frames": 21,
+          "frameRate": 6,
+          "scale": 0.489
+        }
+      }
+    },
+    "linchong": {
+      "label": "林冲",
+      "role": "linchong",
+      "scale": 0.19,
+      "origin": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "depth": 140,
+      "states": {
+        "idle": {
+          "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
+          "frameWidth": 682,
+          "frameHeight": 669,
+          "frames": 17,
+          "frameRate": 4,
+          "scale": 0.19
+        },
+        "syncing": {
+          "png": "/static/themes/liangshan/linchong_syncing-spritesheet.png",
+          "frameWidth": 256,
+          "frameHeight": 256,
+          "frames": 6,
+          "frameRate": 6,
+          "scale": 0.519
+        }
+      }
+    },
+    "luzhishen": {
+      "label": "鲁智深",
+      "role": "luzhishen",
+      "scale": 0.19,
+      "origin": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "depth": 140,
+      "states": {
+        "idle": {
+          "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
+          "frameWidth": 682,
+          "frameHeight": 669,
+          "frames": 17,
+          "frameRate": 4,
+          "scale": 0.19
+        },
+        "error": {
+          "png": "/static/themes/liangshan/luzhishen_error-spritesheet.png",
+          "frameWidth": 256,
+          "frameHeight": 256,
+          "frames": 6,
+          "frameRate": 6,
+          "scale": 0.505
+        }
+      }
+    }
+  },
+  "slots": {
+    "mainHome": {
+      "x": 640,
+      "y": 600
+    },
+    "mainCommand": {
+      "x": 640,
+      "y": 650
+    },
+    "mainResearch": {
+      "x": 640,
+      "y": 398
+    },
+    "supportWriting": {
+      "x": 382,
+      "y": 378
+    },
+    "supportExecuting": {
+      "x": 900,
+      "y": 398
+    },
+    "supportSyncing": {
+      "x": 640,
+      "y": 398
+    },
+    "supportError": {
+      "x": 1066,
+      "y": 395
+    }
+  },
+  "stateScenes": {
+    "idle": {
+      "mainSlot": "mainHome",
+      "mainAnimation": "idle_a",
+      "supportVisible": false
+    },
+    "writing": {
+      "mainSlot": "mainCommand",
+      "mainAnimation": "idle_b",
+      "supportVisible": true,
+      "supportHero": "wuyong",
+      "supportSlot": "supportWriting",
+      "supportAnimation": "writing"
+    },
+    "researching": {
+      "mainSlot": "mainResearch",
+      "mainAnimation": "researching",
+      "supportVisible": false
+    },
+    "executing": {
+      "mainSlot": "mainCommand",
+      "mainAnimation": "idle_b",
+      "supportVisible": true,
+      "supportHero": "wusong",
+      "supportSlot": "supportExecuting",
+      "supportAnimation": "executing"
+    },
+    "syncing": {
+      "mainSlot": "mainCommand",
+      "mainAnimation": "idle_b",
+      "supportVisible": true,
+      "supportHero": "linchong",
+      "supportSlot": "supportSyncing",
+      "supportAnimation": "syncing"
+    },
+    "error": {
+      "mainSlot": "mainCommand",
+      "mainAnimation": "idle_b",
+      "supportVisible": true,
+      "supportHero": "luzhishen",
+      "supportSlot": "supportError",
+      "supportAnimation": "error"
+    }
+  },
+  "dialogues": {
+    "idle": {
+      "speaker": "songjiang",
+      "lines": [
+        "梁山暂且无事，俺也去歇口气。",
+        "四下还算太平，先让我缓缓神。",
+        "眼下无甚急事，兄弟们各自安顿便是。",
+        "风平浪静最好，俺也去先坐镇看着。",
+        "若无差遣，俺也去先在此歇一歇。",
+        "且先按兵不动，真有事再叫我不迟。",
+        "大伙儿都安生些，俺也去也好喘口气。",
+        "无令不动，无事不惊，这才像个样子。",
+        "今日若能少出些乱子，俺也去便知足了。",
+        "先稳着，莫要自乱阵脚。",
+        "我在这儿看着，真有急报再来唤我。"
+      ],
+      "delayMs": 900
+    },
+    "writing": {
+      "speaker": "songjiang",
+      "lines": [
+        "笔杆子还是得军师来。吴用，这回你上！",
+        "这等落字成章的活儿，还得军师出手。",
+        "我这嘴上说得热闹，真写下来还得靠吴用。",
+        "要写得漂亮、说得明白，军师最拿手。",
+        "纸上文章我不硬气，吴用，你来镇这个场。",
+        "写字落款讲究体面，军师替我把关。",
+        "这回要的是章法和分寸，吴用最懂。",
+        "我只管定方向，落笔成文还得请军师。",
+        "把这番话写顺、写透，方能服人，吴用你来。",
+        "嘴上交代容易，真成文书还得军师稳得住。"
+      ],
+      "delayMs": 1000
+    },
+    "researching": {
+      "speaker": "songjiang",
+      "lines": [
+        "先别吵，让我把这事理一理。",
+        "此事急不得，先把来龙去脉捋清。",
+        "我先看看门道，再定下一步怎么走。",
+        "线头这么多，总得先拣出个主次。",
+        "先把局势看明白，省得一脚踩空。",
+        "眼下最怕看漏一环，容我再细想想。",
+        "这事表面简单，内里未必如此。",
+        "且慢一步，先把关节处看透。",
+        "真要下手，也得先知道刀该往哪儿落。",
+        "不把底细摸清，贸然出手只会误事。"
+      ],
+      "delayMs": 900,
+      "loopFirstDelayMinMs": 2800,
+      "loopFirstDelayMaxMs": 4200,
+      "loopIntervalMinMs": 6500,
+      "loopIntervalMaxMs": 9500
+    },
+    "executing": {
+      "speaker": "songjiang",
+      "lines": [
+        "这体力活儿我干不了！武松，你来干！",
+        "要真刀真枪办事，还得武松出马！",
+        "这事光说不顶用，武松，给我上手办了！",
+        "该动手时就别讲虚的，武松你去压阵！",
+        "这一步得有人硬着头皮顶上，武松，轮到你了！",
+        "眼下不是磨嘴皮子的时候，武松，上！",
+        "这桩事要落到实处，还得靠你这身胆气。",
+        "谁能把这事一拳打实？自然是武松。",
+        "莫再耽搁，叫武松把这事狠狠干成。",
+        "真要拼手段和力气，梁山上还得看武松。"
+      ],
+      "delayMs": 1200
+    },
+    "syncing": {
+      "speaker": "songjiang",
+      "lines": [
+        "队伍得整齐，流程得齐活。林冲，这事你盯着！",
+        "前后要对上，消息要齐全，林冲，你去收一收。",
+        "这事讲究一个稳字，林冲，替我把节奏理顺。",
+        "散不得、乱不得，林冲，这一阵你来镇。",
+        "把前后都接上，别漏一步，林冲你去看着。",
+        "这事最怕脱节，林冲，你替我把链子拴紧。",
+        "前军后队都要跟上，林冲，这活你最稳。",
+        "但凡有一步接不上，后头就要乱，林冲去盯住。",
+        "讲究秩序的时候，还得请林冲出来压一压。",
+        "把这盘队伍带整齐，别叫人看了笑话。"
+      ],
+      "delayMs": 1000
+    },
+    "error": {
+      "speaker": "songjiang",
+      "lines": [
+        "又出岔子了？鲁大师，先去把场子镇住！",
+        "这回怕是要冒烟了，鲁大师，快去救火！",
+        "坏了，锅要炸。鲁智深，先给我把场面按住！",
+        "别让乱子再大了，鲁大师，你先顶上！",
+        "这档子麻烦我看着都头疼，鲁智深，劳你出手！",
+        "这口锅眼看压不住了，鲁大师，快去掀它回来！",
+        "现在不是讲道理的时候，先把火头摁灭再说！",
+        "乱成这样，再不请鲁大师，怕是真收不住。",
+        "这麻烦越拖越大，鲁智深，立刻去镇场！",
+        "先把人心稳住，再把烂摊子一并收拾了。"
+      ],
+      "delayMs": 1100
+    }
+  },
+  "supportDialogues": {
+    "default": {
+      "firstDelayMinMs": 2500,
+      "firstDelayMaxMs": 4000,
+      "intervalMinMs": 6000,
+      "intervalMaxMs": 12000,
+      "minGapAfterMainMs": 2500
+    },
+    "wuyong": {
+      "lines": [
+        "这活不难，待我理出个章法来。",
+        "笔墨交给我，哥哥只管放心。",
+        "先把轻重缓急排好，省得白忙一场。",
+        "越是乱，越要按章程来。",
+        "话要说得透，字也得落得稳。",
+        "让我先把条目列清，再慢慢铺开。",
+        "不怕事多，就怕头绪不明。",
+        "有些话要拐个弯说，才更服人。",
+        "先定骨架，再填血肉，这文才立得住。",
+        "这事不难，只是得拿捏分寸。",
+        "能一句说清的，绝不用三句绕。",
+        "让我斟酌斟酌，免得话到嘴边失了准头。"
+      ]
+    },
+    "wusong": {
+      "lines": [
+        "说干就干，别磨蹭。",
+        "这点阵仗，还不够我热身。",
+        "谁拦路，我就先把谁办了。",
+        "哥哥发了话，这事今天就得落地。",
+        "手都热起来了，正好狠狠干一场。",
+        "光站着看没用，真功夫还得落手上。",
+        "这事要么不做，要做就给它做到底。",
+        "真碰上硬骨头，我倒更来精神。",
+        "别跟我说难，难也得给它办成。",
+        "拳头要砸到实处，事情才算真推进。",
+        "若是半途而废，倒不如一开始就别叫我来。",
+        "能一步干完的事，我绝不拖到明天。"
+      ]
+    },
+    "linchong": {
+      "lines": [
+        "莫急，我先把前后都对齐。",
+        "队形一乱，事情就难办了。",
+        "我盯着呢，差不了这一分一毫。",
+        "先稳住节奏，再往下推。",
+        "凡事一步一步来，乱了就容易漏。",
+        "前后衔接最要紧，我先替你守住。",
+        "只要节奏不散，这事就能顺下去。",
+        "该接上的我来接，该补上的我来补。",
+        "急归急，次序不能乱。",
+        "队伍只要一稳，后头就好办得多。",
+        "慢半拍不要紧，最怕的是乱了拍。",
+        "我先把路铺平，再叫后面的人跟上。"
+      ]
+    },
+    "luzhishen": {
+      "lines": [
+        "哪儿又炸锅了？洒家来收拾！",
+        "先别慌，天塌不下来。",
+        "有毛病就改，有麻烦就拆。",
+        "这破事再闹，洒家可要动真格了。",
+        "都闪开些，让洒家先把火压住。",
+        "再乱也得有人兜底，这回我来。",
+        "这点烂摊子，还不至于把人吓住。",
+        "莫嚷莫嚷，洒家一来，天大的火也得压住。",
+        "谁把事情搅成这样，待我先收拾局面。",
+        "烂归烂，总有人得伸手去兜，这便是我了。",
+        "这点风浪算什么，洒家见得多了。",
+        "先把火灭了，再慢慢追究是谁惹的祸。"
+      ]
+    }
+  },
+  "positions": {
+    "idle": {
+      "x": 640,
+      "y": 600
+    },
+    "writing": {
+      "x": 382,
+      "y": 378
+    },
+    "researching": {
+      "x": 640,
+      "y": 398
+    },
+    "executing": {
+      "x": 900,
+      "y": 398
+    },
+    "syncing": {
+      "x": 640,
+      "y": 680
+    },
+    "error": {
+      "x": 1066,
+      "y": 395
+    }
+  },
+  "effects": {
+    "syncing": {
+      "tint": "0x66ccff",
+      "shake": 0.0,
+      "bob": 2.0
+    },
+    "error": {
+      "tint": "0xff6666",
+      "shake": 1.6,
+      "bob": 0.0
+    }
+  },
+  "audio": {
+    "enabled": true,
+    "volume": 0.55,
+    "role": "songjiang",
+    "pattern": "/static/themes/liangshan/audio/{role}_{state}.mp3",
+    "states": {
+      "idle": {
+        "loop": true,
+        "volume": 0.7
+      },
+      "writing": {
+        "loop": true,
+        "volume": 0.8
+      },
+      "researching": {
+        "loop": true,
+        "volume": 0.8
+      },
+      "executing": {
+        "loop": true,
+        "volume": 0.8
+      },
+      "syncing": {
+        "loop": true,
+        "volume": 0.9
+      },
+      "error": {
+        "loop": true,
+        "volume": 0.9
+      }
+    },
+    "roles": {
+      "songjiang": {
+        "states": {
+          "idle": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_idle.mp3",
+            "loop": true,
+            "volume": 0.7
+          },
+          "researching": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_researching.mp3",
+            "loop": true,
+            "volume": 0.8
+          }
+        }
+      },
+      "wuyong": {
+        "states": {
+          "idle": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_idle.mp3",
+            "loop": true,
+            "volume": 0.7
+          },
+          "writing": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_writing.mp3",
+            "loop": true,
+            "volume": 0.8
+          }
+        }
+      },
+      "wusong": {
+        "states": {
+          "idle": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_idle.mp3",
+            "loop": true,
+            "volume": 0.7
+          },
+          "executing": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_executing.mp3",
+            "loop": true,
+            "volume": 0.8
+          }
+        }
+      },
+      "linchong": {
+        "states": {
+          "idle": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_idle.mp3",
+            "loop": true,
+            "volume": 0.7
+          },
+          "syncing": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_syncing.mp3",
+            "loop": true,
+            "volume": 0.9
+          }
+        }
+      },
+      "luzhishen": {
+        "states": {
+          "idle": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_idle.mp3",
+            "loop": true,
+            "volume": 0.7
+          },
+          "error": {
+            "mp3": "/static/themes/liangshan/audio/songjiang_error.mp3",
+            "loop": true,
+            "volume": 0.9
+          }
+        }
+      }
+    }
+  },
+  "objects": [
+    {
+      "type": "animated",
+      "key": "flag",
+      "x": 904,
+      "y": 138,
+      "scale": 0.14,
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "depth": 1200,
+      "clickText": "替天行道"
+    },
+    {
+      "type": "animated",
+      "key": "lantern_1",
+      "x": 561,
+      "y": 56,
+      "scale": 0.4,
+      "origin": {
+        "x": 0.5,
+        "y": 0.0
+      },
+      "depth": 1200,
+      "clickText": "堂前灯影"
+    },
+    {
+      "type": "animated",
+      "key": "lantern_2",
+      "x": 719,
+      "y": 56,
+      "scale": 0.4,
+      "origin": {
+        "x": 0.5,
+        "y": 0.0
+      },
+      "depth": 1200,
+      "clickText": "堂前灯影"
+    },
+    {
+      "type": "animated",
+      "key": "red_candle",
+      "x": 510,
+      "y": 420,
+      "scale": 0.2,
+      "origin": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "depth": 1300,
+      "clickText": "红烛照案"
+    }
+  ]
+}

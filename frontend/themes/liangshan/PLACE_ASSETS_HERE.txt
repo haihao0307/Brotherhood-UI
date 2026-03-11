@@ -1,0 +1,40 @@
+Put your Liangshan assets here:
+
+- bg.png            (recommended 1280x720 or any 16:9)
+- optional bg.webp
+
+- bg_fg.png         (transparent PNG; foreground occlusion layer)
+
+- hero_walk.png     (1200x390, 4 frames horizontally; each frame 300x390; transparent)
+- optional hero_walk.webp
+
+Props spritesheets (placeholders exist; replace anytime):
+
+- props/lantern.png (horizontal frames, transparent)
+- props/water.png
+- props/flag.png
+
+State audio (mp3):
+
+- audio/songjiang_idle.mp3
+- audio/songjiang_writing.mp3
+- audio/songjiang_researching.mp3
+- audio/songjiang_executing.mp3
+- audio/songjiang_syncing.mp3
+- audio/songjiang_error.mp3
+
+Generic agent GIF one-click sync:
+
+- Put GIFs in this folder and use pattern: <character>_<state>.gif
+- States: walking (movement), idle, writing, researching, executing, syncing, error
+
+- GUI mode (recommended):
+  python sync_agent_theme.py
+  Then click-select each GIF and run.
+  Or directly double-click: launch_sync_agent_theme_gui.bat
+
+- Auto-scan mode (example for Songjiang):
+  python sync_agent_theme.py --character songjiang --scan
+
+- Backward-compatible quick command:
+  python sync_songjiang_theme.py
