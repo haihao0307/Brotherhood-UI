@@ -16,6 +16,8 @@
 **Languages:** [English](#english) | [繁體中文](#繁體中文)
 
 ---
+![songjiang_researching](https://github.com/user-attachments/assets/02431dbb-549d-449c-b49b-1c34473f4e15)![linchong_syncing](https://github.com/user-attachments/assets/30271876-506a-4578-bf1b-e96a3e64db0a)![wuyong_writing](https://github.com/user-attachments/assets/b53ce5bb-f696-4314-8133-dd3b9d465c22)![luzhishen_error](https://github.com/user-attachments/assets/afe5044a-054d-46c0-a4df-8fed75bb4879)![wusong_executing](https://github.com/user-attachments/assets/33bd830d-d93f-4871-9c88-c5d9f6ca3fb6)
+
 
 ## English
 
