@@ -72,28 +72,35 @@
         "frameWidth": 275,
         "frameHeight": 768,
         "frames": 5,
-        "frameRate": 7
+        "frameRate": 4
       },
       "lantern_1": {
         "png": "/static/themes/liangshan/props/lantern_1-spritesheet.png",
         "frameWidth": 256,
         "frameHeight": 256,
         "frames": 6,
-        "frameRate": 5
+        "frameRate": 2
       },
       "lantern_2": {
         "png": "/static/themes/liangshan/props/lantern_2-spritesheet.png",
         "frameWidth": 256,
         "frameHeight": 256,
         "frames": 6,
-        "frameRate": 5
+        "frameRate": 2
       },
       "red_candle": {
         "png": "/static/themes/liangshan/props/red_candle.png",
         "frameWidth": 256,
         "frameHeight": 256,
         "frames": 7,
-        "frameRate": 6
+        "frameRate": 4
+      },
+      "fire_pit": {
+        "png": "/static/themes/liangshan/props/Fire pit-spritesheet.png",
+        "frameWidth": 256,
+        "frameHeight": 256,
+        "frames": 9,
+        "frameRate": 5
       }
     }
   },
@@ -181,7 +188,7 @@
           "frameWidth": 256,
           "frameHeight": 256,
           "frames": 21,
-          "frameRate": 6,
+          "frameRate": 4,
           "scale": 0.496
         }
       }
@@ -209,7 +216,7 @@
           "frameWidth": 256,
           "frameHeight": 256,
           "frames": 21,
-          "frameRate": 6,
+          "frameRate": 3,
           "scale": 0.489
         }
       }
@@ -237,7 +244,7 @@
           "frameWidth": 256,
           "frameHeight": 256,
           "frames": 6,
-          "frameRate": 6,
+          "frameRate": 3,
           "scale": 0.519
         }
       }
@@ -265,7 +272,7 @@
           "frameWidth": 256,
           "frameHeight": 256,
           "frames": 6,
-          "frameRate": 6,
+          "frameRate": 2,
           "scale": 0.505
         }
       }
@@ -715,6 +722,19 @@
       },
       "depth": 1300,
       "clickText": "红烛照案"
+    },
+    {
+      "type": "animated",
+      "key": "fire_pit",
+      "x": 640,
+      "y": 250,
+      "scale": 0.7,
+      "origin": {
+        "x": 0.5,
+        "y": 1.0
+      },
+      "depth": 1300,
+      "clickText": "火盆暖堂"
     }
   ]
 }

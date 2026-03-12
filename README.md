@@ -1,4 +1,17 @@
-# Brotherhood-UI
+<div align="center">
+  <img src="./logo.png" alt="Brotherhood-UI logo" width="140" />
+  <h1>Brotherhood-UI</h1>
+  <p><strong>Turn OpenClaw into a live Liangshan stage.</strong></p>
+  <p>
+    <a href="https://github.com/haihao0307/Brotherhood-UI"><img src="https://img.shields.io/badge/GitHub-Brotherhood--UI-181717?style=flat-square&logo=github" alt="GitHub" /></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square" alt="License" /></a>
+    <img src="https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.x" />
+    <img src="https://img.shields.io/badge/Flask-Backend-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask backend" />
+    <img src="https://img.shields.io/badge/Phaser-Frontend-3F51B5?style=flat-square" alt="Phaser frontend" />
+    <img src="https://img.shields.io/badge/Status-Experimental-D97706?style=flat-square" alt="Status experimental" />
+  </p>
+  <img src="./banner.png" alt="Brotherhood-UI banner" width="100%" />
+</div>
 
 **Languages:** [English](#english) | [繁體中文](#繁體中文)
 
