@@ -14,6 +14,7 @@ venv/
 # Runtime / local files
 state.json
 agents-state.json
+.runtime/
 # keep join-keys.json in repo for first-run demo
 *.log
 *.out

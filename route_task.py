@@ -102,6 +102,16 @@ def parse_rules(markdown_path: str) -> List[TaskRule]:
     return rules
 
 
+def filter_overlapping_keywords(matched: List[str]) -> List[str]:
+    """Prefer longer matched phrases so nested short keywords do not score twice."""
+    kept: List[str] = []
+    for keyword in sorted(matched, key=len, reverse=True):
+        if any(keyword in existing for existing in kept):
+            continue
+        kept.append(keyword)
+    return sorted(kept, key=lambda item: (-len(item), item))
+
+
 def pick_rule(task_text: str, rules: List[TaskRule]) -> Optional[dict]:
     normalized = normalize_text(task_text)
     if not normalized:
@@ -110,6 +120,7 @@ def pick_rule(task_text: str, rules: List[TaskRule]) -> Optional[dict]:
     best = None
     for rule in rules:
         matched = [kw for kw in rule.keywords if kw and kw in normalized]
+        matched = filter_overlapping_keywords(matched)
         if not matched:
             continue
         score = len(matched) * 1000 + sum(len(kw) for kw in matched) + rule.priority * 10
@@ -149,6 +160,7 @@ def build_state_payload(match: dict, task_text: str) -> dict:
     payload["routing_rule"] = rule.title
     payload["routing_keywords"] = match["matched_keywords"]
     payload["task_text"] = task_text.strip()
+    payload["task_board_reason"] = "task_started"
     payload["updated_at"] = datetime.now().isoformat()
     return payload
 

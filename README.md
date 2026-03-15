@@ -8,7 +8,8 @@
     <img src="https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.x" />
     <img src="https://img.shields.io/badge/Flask-Backend-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask backend" />
     <img src="https://img.shields.io/badge/Phaser-Frontend-3F51B5?style=flat-square" alt="Phaser frontend" />
-    <img src="https://img.shields.io/badge/Status-Experimental-D97706?style=flat-square" alt="Status experimental" />
+    <img src="https://img.shields.io/badge/OpenClaw-Local%20Auto%20Sync-0F766E?style=flat-square" alt="OpenClaw local auto sync" />
+    <img src="https://img.shields.io/badge/Desktop%20Ops-Routed-7C3AED?style=flat-square" alt="Desktop ops routed" />
   </p>
   <img src="./banner.png" alt="Brotherhood-UI banner" width="100%" />
 </div>
@@ -17,6 +18,8 @@
 
 ---
 ![songjiang_researching](https://github.com/user-attachments/assets/02431dbb-549d-449c-b49b-1c34473f4e15)![linchong_syncing](https://github.com/user-attachments/assets/30271876-506a-4578-bf1b-e96a3e64db0a)![wuyong_writing](https://github.com/user-attachments/assets/b53ce5bb-f696-4314-8133-dd3b9d465c22)![luzhishen_error](https://github.com/user-attachments/assets/afe5044a-054d-46c0-a4df-8fed75bb4879)![wusong_executing](https://github.com/user-attachments/assets/33bd830d-d93f-4871-9c88-c5d9f6ca3fb6)
+
+> Best current flow: run `.\brotherhood-ui.bat auto`, keep your local OpenClaw chat open, and let Brotherhood-UI mirror the session automatically.
 
 
 ## English
@@ -80,17 +83,22 @@ User natural language
   -> hero animation + props + music
 ```
 
-### Current Capabilities
+### Why This Version Matters
 
-- 6 core states: `idle / writing / researching / executing / syncing / error`
-- Dual-actor structure: one main hero plus one summoned support hero
-- Layered rendering for background, foreground, actors, and props
-- Animated props via spritesheets
-- Automatic audio lookup using `<role>_<state>.mp3`
-- Natural-language task routing
-- Task lifecycle driving through `start / step / done / fail`
-- Asset sync tooling for `theme.json`
-- Multi-agent collaboration endpoints through `join-agent` and `agent-push`
+- Automatic local OpenClaw session mirroring through `openclaw_session_watch.py`
+- One-command Windows entrypoint through `.\brotherhood-ui.bat auto`
+- 6-state hero performance model instead of a single character doing everything
+- Natural-language routing expanded for real desktop operations on Windows and macOS
+- Asset pipeline and `theme.json` workflow tuned for fast scene iteration
+
+### What The Router Already Understands
+
+- Coding work: frontend, backend, scripts, testing, build, deployment
+- Desktop operations: move, copy, rename, delete, unzip, install, Finder, Explorer
+- Browser work: upload, download, forms, login, tabs, refresh
+- Office work: Word, Excel, PPT, PDF, print, scan
+- System actions: Wi-Fi, Bluetooth, VPN, screenshots, terminal, permissions
+- Failure cases: permission denied, file in use, damaged archive, upload failure, page freeze
 
 ### Key Differences From the Original Project
 
@@ -101,7 +109,35 @@ User natural language
 - `theme.json` is now the central scene configuration entry
 - Added `sync_agent_theme.py` for asset workflow
 
-### Quick Start
+### Recommended Start (Windows)
+
+Install dependencies once:
+
+```powershell
+python -m pip install -r backend/requirements.txt
+```
+
+Then start everything with one command:
+
+```powershell
+.\brotherhood-ui.bat auto
+```
+
+Useful helper commands:
+
+```powershell
+.\brotherhood-ui.bat doctor
+.\brotherhood-ui.bat stop
+```
+
+Recommended test:
+
+1. Run `.\brotherhood-ui.bat auto`
+2. Keep your local OpenClaw web chat open
+3. Send a normal task such as `Help me inspect the OpenClaw docs structure`
+4. Watch Brotherhood-UI switch through heroes and states automatically
+
+### Manual / Dev Start
 
 Install dependencies:
 
@@ -115,11 +151,14 @@ Start the backend:
 python backend/app.py
 ```
 
-Default URL:
+Default backend URL:
 
 ```text
 http://127.0.0.1:18791
 ```
+
+On some Windows setups the reachable local address may be another LAN address printed by Flask.  
+If you use the helper script, prefer `.\brotherhood-ui.bat open` or `.\brotherhood-ui.bat auto`.
 
 Manual state test:
 
@@ -156,12 +195,51 @@ python task_board.py step executing "Wu Song is implementing the task"
 python task_board.py done "Task completed, back to standby"
 ```
 
+OpenClaw bridge:
+
+```powershell
+python openclaw_bridge.py start "Help me inspect the OpenClaw docs structure"
+python openclaw_bridge.py phase "Reading the OpenClaw docs and organizing the plan"
+python openclaw_bridge.py phase "Implementing the frontend mapping logic"
+python openclaw_bridge.py done "Task completed, back to standby"
+```
+
+Windows helper:
+
+```powershell
+.\brotherhood-ui.bat serve
+.\brotherhood-ui.bat watch
+.\brotherhood-ui.bat open
+.\brotherhood-ui.bat start "Help me inspect the OpenClaw docs structure"
+.\brotherhood-ui.bat phase "Reading the OpenClaw docs and organizing the plan"
+.\brotherhood-ui.bat phase "Implementing the frontend mapping logic" --state executing
+.\brotherhood-ui.bat done "Task completed, back to standby"
+```
+
+Automatic local OpenClaw sync:
+
+```powershell
+.\brotherhood-ui.bat auto
+```
+
+Health check:
+
+```powershell
+.\brotherhood-ui.bat doctor
+```
+
+Stop helper-managed services:
+
+```powershell
+.\brotherhood-ui.bat stop
+```
+
 Recommended flow:
 
-1. Run `task_board.py start "<original user request>"` when a task begins
-2. Run `task_board.py step ...` when the task phase changes
-3. Run `task_board.py done "..."` on success
-4. Run `task_board.py fail "..."` on failure or blockage
+1. Run `.\brotherhood-ui.bat auto`
+2. Open or keep using your local OpenClaw web chat
+3. Send a task to OpenClaw normally
+4. Let `openclaw_session_watch.py` mirror the active local session into Brotherhood-UI
 
 ### Theme System
 
@@ -180,6 +258,14 @@ Key configuration nodes:
 - `objects`
 
 Most visual changes can be made by replacing assets and editing `theme.json` without rewriting frontend logic.
+
+### OpenClaw Integration
+
+- `openclaw_session_watch.py` watches the active local OpenClaw session and mirrors it into `state.json`
+- `brotherhood-ui.bat auto` is the recommended first-run entrypoint
+- `brotherhood-ui.bat doctor` checks backend health, watcher heartbeat, and OpenClaw session discovery
+- `openclaw_bridge.py` remains available when you want to inject lifecycle events manually
+- Integration notes live in `docs/openclaw-integration.md`
 
 ### Asset Sync Tool
 
@@ -213,6 +299,7 @@ python sync_agent_theme.py --input frontend/themes/liangshan/wuyong_writing-spri
 Brotherhood-UI/
   backend/
   docs/
+    openclaw-integration.md
     task-routing-rules.md
   frontend/
     css/
@@ -222,6 +309,11 @@ Brotherhood-UI/
         theme.json
         props/
         audio/
+  brotherhood-ui.bat
+  brotherhood-ui.ps1
+  openclaw_bridge.py
+  openclaw_session_watch.py
+  openclaw_sync_doctor.py
   route_task.py
   task_board.py
   set_state.py
@@ -307,17 +399,22 @@ OpenClaw 自然語言任務 -> 狀態路由 -> 英雄/場景映射 -> 前端即�
   -> 梁山角色動畫 + 場景道具 + 音樂
 ```
 
-### 目前能力
+### 這個版本的重點
 
-- 支援 6 個核心狀態：`idle / writing / researching / executing / syncing / error`
-- 支援「主將常駐 + 單副將召將」的雙演員結構
-- 支援背景、前景、角色、道具分層
-- 支援 props spritesheet 動畫道具
-- 音訊依照 `<role>_<state>.mp3` 自動匹配
-- 支援自然語言任務路由
-- 支援任務生命週期驅動：`start / step / done / fail`
-- 支援將 spritesheet 資源同步到 `theme.json`
-- 支援 `join-agent` / `agent-push` 多 Agent 協作介面
+- 可透過 `openclaw_session_watch.py` 自動鏡像本機 OpenClaw 會話
+- Windows 現在有一鍵入口：`.\brotherhood-ui.bat auto`
+- 6 種狀態各自交給不同英雄，不再靠單一角色硬撐全部流程
+- 關鍵字路由已擴充到大量桌面端口語操作
+- `theme.json` 與素材同步工具的迭代流程更順
+
+### 路由目前已覆蓋的常見任務
+
+- 開發工作：前端、後端、腳本、自動化、測試、打包、部署
+- 桌面操作：搬檔、複製、改名、刪除、解壓、安裝、Finder、資源管理器
+- 瀏覽器操作：上傳、下載、表單、登入、分頁、刷新
+- 辦公文件：Word、Excel、PPT、PDF、列印、掃描
+- 系統操作：Wi-Fi、藍牙、VPN、截圖、終端、權限設定
+- 異常場景：權限不足、檔案占用、壓縮包損壞、上傳失敗、頁面卡死
 
 ### 與原專案的主要差異
 
@@ -328,7 +425,35 @@ OpenClaw 自然語言任務 -> 狀態路由 -> 英雄/場景映射 -> 前端即�
 - `theme.json` 已成為場景核心配置入口
 - 新增素材同步工具 `sync_agent_theme.py`
 
-### 快速開始
+### 推薦啟動方式（Windows）
+
+先安裝依賴一次：
+
+```powershell
+python -m pip install -r backend/requirements.txt
+```
+
+之後直接一鍵啟動：
+
+```powershell
+.\brotherhood-ui.bat auto
+```
+
+常用輔助命令：
+
+```powershell
+.\brotherhood-ui.bat doctor
+.\brotherhood-ui.bat stop
+```
+
+推薦測試流程：
+
+1. 執行 `.\brotherhood-ui.bat auto`
+2. 保持本機 OpenClaw 聊天頁開著
+3. 正常送出一條任務
+4. 觀察 Brotherhood-UI 是否自動切換英雄與狀態
+
+### 手動 / 開發模式
 
 安裝依賴：
 
@@ -342,11 +467,14 @@ python -m pip install -r backend/requirements.txt
 python backend/app.py
 ```
 
-預設位址：
+預設後端位址：
 
 ```text
 http://127.0.0.1:18791
 ```
+
+有些 Windows 環境實際可用的本機位址會是 Flask 啟動時列出的另一個區網位址。  
+如果用輔助腳本，優先用 `.\brotherhood-ui.bat open` 或 `.\brotherhood-ui.bat auto`。
 
 直接切換狀態測試：
 
@@ -389,6 +517,14 @@ python task_board.py done "任務完成，回到待命"
 2. 階段變化時執行 `task_board.py step ...`
 3. 成功結束時執行 `task_board.py done "..."`
 4. 失敗或阻塞時執行 `task_board.py fail "..."`
+
+### OpenClaw 自動同步
+
+- `openclaw_session_watch.py` 會監看本機 OpenClaw 當前會話，並把狀態鏡像到 `state.json`
+- `brotherhood-ui.bat auto` 會啟動後端、啟動 watcher，並打開面板
+- `brotherhood-ui.bat doctor` 可檢查後端、watcher heartbeat 與 OpenClaw 會話發現是否正常
+- `openclaw_bridge.py` 仍可用於手動注入任務生命週期事件
+- 詳細說明見 `docs/openclaw-integration.md`
 
 ### 主題系統
 
@@ -441,6 +577,7 @@ Brotherhood-UI/
   backend/
   docs/
     task-routing-rules.md
+    openclaw-integration.md
   frontend/
     css/
     js/
@@ -449,6 +586,11 @@ Brotherhood-UI/
         theme.json
         props/
         audio/
+  brotherhood-ui.bat
+  brotherhood-ui.ps1
+  openclaw_bridge.py
+  openclaw_session_watch.py
+  openclaw_sync_doctor.py
   route_task.py
   task_board.py
   set_state.py

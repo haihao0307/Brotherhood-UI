@@ -23,7 +23,7 @@
         "frameHeight": 669,
         "frames": 17,
         "frameRate": 4,
-        "scale": 0.19
+        "scale": 0.285
       },
       "writing": {
         "png": "/static/themes/liangshan/songjiang_writing-spritesheet.png",
@@ -31,7 +31,7 @@
         "frameHeight": 906,
         "frames": 10,
         "frameRate": 4,
-        "scale": 0.14
+        "scale": 0.21
       },
       "researching": {
         "png": "/static/themes/liangshan/songjiang_researching-spritesheet.png",
@@ -39,7 +39,7 @@
         "frameHeight": 248,
         "frames": 7,
         "frameRate": 2,
-        "scale": 0.52
+        "scale": 0.78
       },
       "executing": {
         "png": "/static/themes/liangshan/songjiang_executing-spritesheet.png",
@@ -47,7 +47,7 @@
         "frameHeight": 669,
         "frames": 9,
         "frameRate": 4,
-        "scale": 0.19
+        "scale": 0.285
       },
       "syncing": {
         "png": "/static/themes/liangshan/songjiang_syncing-spritesheet.png",
@@ -55,7 +55,7 @@
         "frameHeight": 1023,
         "frames": 5,
         "frameRate": 4,
-        "scale": 0.13
+        "scale": 0.195
       },
       "error": {
         "png": "/static/themes/liangshan/songjiang_error-spritesheet.png",
@@ -63,7 +63,7 @@
         "frameHeight": 275,
         "frames": 7,
         "frameRate": 3,
-        "scale": 0.47
+        "scale": 0.705
       }
     },
     "spritesheets": {
@@ -106,7 +106,7 @@
   },
   "hero": {
     "role": "songjiang",
-    "scale": 0.56,
+    "scale": 0.84,
     "origin": {
       "x": 0.5,
       "y": 1.0
@@ -116,7 +116,7 @@
     "id": "songjiang",
     "label": "宋江",
     "role": "songjiang",
-    "scale": 0.56,
+    "scale": 0.84,
     "origin": {
       "x": 0.5,
       "y": 1.0
@@ -127,7 +127,7 @@
       "frameHeight": 230,
       "frames": 5,
       "frameRate": 8,
-      "scale": 0.56
+      "scale": 0.84
     },
     "states": {
       "idle": {
@@ -136,7 +136,7 @@
         "frameHeight": 669,
         "frames": 17,
         "frameRate": 4,
-        "scale": 0.19
+        "scale": 0.285
       },
       "idle_a": {
         "png": "/static/themes/liangshan/songjiang_idle-spritesheet.png",
@@ -144,7 +144,7 @@
         "frameHeight": 669,
         "frames": 17,
         "frameRate": 4,
-        "scale": 0.19
+        "scale": 0.285
       },
       "idle_b": {
         "png": "/static/themes/liangshan/songjiang_idle_b-spritesheet.png",
@@ -152,7 +152,7 @@
         "frameHeight": 933,
         "frames": 9,
         "frameRate": 3,
-        "scale": 0.136
+        "scale": 0.204
       },
       "researching": {
         "png": "/static/themes/liangshan/songjiang_researching-spritesheet.png",
@@ -160,7 +160,7 @@
         "frameHeight": 248,
         "frames": 7,
         "frameRate": 2,
-        "scale": 0.52
+        "scale": 0.78
       }
     }
   },
@@ -168,7 +168,7 @@
     "wuyong": {
       "label": "吴用",
       "role": "wuyong",
-      "scale": 0.19,
+      "scale": 0.285,
       "origin": {
         "x": 0.5,
         "y": 1.0
@@ -181,7 +181,7 @@
           "frameHeight": 669,
           "frames": 17,
           "frameRate": 4,
-          "scale": 0.19
+          "scale": 0.285
         },
         "writing": {
           "png": "/static/themes/liangshan/wuyong_writing-spritesheet.png",
@@ -189,14 +189,14 @@
           "frameHeight": 256,
           "frames": 21,
           "frameRate": 4,
-          "scale": 0.496
+          "scale": 0.744
         }
       }
     },
     "wusong": {
       "label": "武松",
       "role": "wusong",
-      "scale": 0.19,
+      "scale": 0.285,
       "origin": {
         "x": 0.5,
         "y": 1.0
@@ -209,7 +209,7 @@
           "frameHeight": 250,
           "frames": 7,
           "frameRate": 2,
-          "scale": 0.5
+          "scale": 0.75
         },
         "executing": {
           "png": "/static/themes/liangshan/wusong_executing-spritesheet.png",
@@ -217,14 +217,14 @@
           "frameHeight": 256,
           "frames": 21,
           "frameRate": 3,
-          "scale": 0.489
+          "scale": 0.734
         }
       }
     },
     "linchong": {
       "label": "林冲",
       "role": "linchong",
-      "scale": 0.19,
+      "scale": 0.285,
       "origin": {
         "x": 0.5,
         "y": 1.0
@@ -237,7 +237,7 @@
           "frameHeight": 669,
           "frames": 17,
           "frameRate": 4,
-          "scale": 0.19
+          "scale": 0.285
         },
         "syncing": {
           "png": "/static/themes/liangshan/linchong_syncing-spritesheet.png",
@@ -245,14 +245,14 @@
           "frameHeight": 256,
           "frames": 6,
           "frameRate": 3,
-          "scale": 0.519
+          "scale": 0.779
         }
       }
     },
     "luzhishen": {
       "label": "鲁智深",
       "role": "luzhishen",
-      "scale": 0.19,
+      "scale": 0.285,
       "origin": {
         "x": 0.5,
         "y": 1.0
@@ -265,7 +265,7 @@
           "frameHeight": 669,
           "frames": 17,
           "frameRate": 4,
-          "scale": 0.19
+          "scale": 0.285
         },
         "error": {
           "png": "/static/themes/liangshan/luzhishen_error-spritesheet.png",
@@ -273,7 +273,7 @@
           "frameHeight": 256,
           "frames": 6,
           "frameRate": 2,
-          "scale": 0.505
+          "scale": 0.758
         }
       }
     }
@@ -289,23 +289,23 @@
     },
     "mainResearch": {
       "x": 640,
-      "y": 398
+      "y": 450
     },
     "supportWriting": {
-      "x": 382,
-      "y": 378
+      "x": 350,
+      "y": 520
     },
     "supportExecuting": {
       "x": 900,
-      "y": 398
+      "y": 520
     },
     "supportSyncing": {
-      "x": 640,
-      "y": 398
+      "x": 240,
+      "y": 650
     },
     "supportError": {
       "x": 1066,
-      "y": 395
+      "y": 520
     }
   },
   "stateScenes": {
@@ -674,9 +674,9 @@
     {
       "type": "animated",
       "key": "flag",
-      "x": 904,
-      "y": 138,
-      "scale": 0.14,
+      "x": 930,
+      "y": 160,
+      "scale": 0.30,
       "origin": {
         "x": 0.5,
         "y": 0.5
@@ -687,7 +687,7 @@
     {
       "type": "animated",
       "key": "lantern_1",
-      "x": 561,
+      "x": 555,
       "y": 56,
       "scale": 0.4,
       "origin": {
@@ -700,7 +700,7 @@
     {
       "type": "animated",
       "key": "lantern_2",
-      "x": 719,
+      "x": 725,
       "y": 56,
       "scale": 0.4,
       "origin": {
@@ -713,8 +713,8 @@
     {
       "type": "animated",
       "key": "red_candle",
-      "x": 510,
-      "y": 420,
+      "x": 500,
+      "y": 250,
       "scale": 0.2,
       "origin": {
         "x": 0.5,
@@ -726,8 +726,8 @@
     {
       "type": "animated",
       "key": "fire_pit",
-      "x": 640,
-      "y": 250,
+      "x": 400,
+      "y": 350,
       "scale": 0.7,
       "origin": {
         "x": 0.5,

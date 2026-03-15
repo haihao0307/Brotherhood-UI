@@ -16,6 +16,13 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(ROOT_DIR, "state.json")
 
 
+def configure_console_streams() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(errors="replace")
+
+
 def load_state() -> dict:
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -110,6 +117,7 @@ def command_step(state: str, detail: str, hero: str | None) -> int:
 
 
 def main() -> int:
+    configure_console_streams()
     parser = argparse.ArgumentParser(description="Drive Brotherhood-UI board states for a task lifecycle.")
     sub = parser.add_subparsers(dest="command", required=True)
 
