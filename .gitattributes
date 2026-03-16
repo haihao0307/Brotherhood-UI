@@ -3,7 +3,5 @@
 *.bat text eol=crlf
 *.ps1 text eol=crlf
 *.sh text eol=lf
-*.command text eol=lf
 *.py text eol=lf
 *.md text eol=lf
-*.app/Contents/MacOS/* text eol=lf

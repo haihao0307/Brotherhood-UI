@@ -21,7 +21,7 @@
 ---
 
 
-> Best current flow: open the platform launcher, click `Start`, keep your local OpenClaw chat open, and let Brotherhood-UI mirror the session automatically.
+> Best current flow: on Windows, open `Brotherhood-UI Launcher` and click `Start`; on macOS, run `python3 brotherhood_ui_launcher.py` and click `Start`.
 
 ### Demo Slots
 
@@ -100,7 +100,7 @@ User natural language
 
 ### Why This Version Matters
 
-- One-click launcher flow for both Windows and macOS
+- One-click launcher flow on Windows and a direct GUI launcher command on macOS
 - Automatic local OpenClaw session mirroring through `openclaw_session_watch.py`
 - 6-state hero performance model instead of a single character doing everything
 - Natural-language routing expanded for real desktop operations on Windows and macOS
@@ -168,36 +168,21 @@ Install dependencies once:
 python3 -m pip install -r backend/requirements.txt
 ```
 
-If you downloaded the project from GitHub and macOS blocks `.command` files, run this once first:
+Then launch the GUI directly from Terminal:
 
 ```bash
-xattr -dr com.apple.quarantine .
-chmod +x "Brotherhood-UI Launcher.command" "Create Desktop Shortcuts.command" "brotherhood-ui.sh"
-```
-
-Create the desktop launcher once:
-
-```bash
-./Create\ Desktop\ Shortcuts.command
-```
-
-Then use the app launcher:
-
-```bash
-open "Brotherhood-UI Launcher.app"
+python3 brotherhood_ui_launcher.py
 ```
 
 Recommended test:
 
-1. Run `./Create\ Desktop\ Shortcuts.command` once
-2. Double-click `Brotherhood-UI Launcher.app` on your desktop
-3. Click `Start`
-4. Keep your local OpenClaw web chat open
-5. Send a normal task such as `Help me inspect the OpenClaw docs structure`
-6. Watch Brotherhood-UI switch through heroes and states automatically
-
-If Finder still blocks the file, right-click `Brotherhood-UI Launcher.app` and choose `Open` once.
-Detailed note: `docs/macos-first-run.md`
+1. Open Terminal
+2. `cd` into the project folder
+3. Run `python3 brotherhood_ui_launcher.py`
+4. Click `Start`
+5. Keep your local OpenClaw web chat open
+6. Send a normal task such as `Help me inspect the OpenClaw docs structure`
+7. Watch Brotherhood-UI switch through heroes and states automatically
 
 ### Manual / Dev Start
 
@@ -334,7 +319,7 @@ Most visual changes can be made by replacing assets and editing `theme.json` wit
 
 - `openclaw_session_watch.py` watches the active local OpenClaw session and mirrors it into `state.json`
 - `Brotherhood-UI Launcher.bat` is the recommended first-run entrypoint on Windows
-- `Brotherhood-UI Launcher.app` is the recommended first-run entrypoint on macOS
+- `python3 brotherhood_ui_launcher.py` is the recommended first-run entrypoint on macOS
 - `brotherhood-ui.bat doctor` checks backend health, watcher heartbeat, and OpenClaw session discovery
 - `brotherhood-ui.sh doctor` provides the same check flow on macOS/Linux
 - `openclaw_bridge.py` remains available when you want to inject lifecycle events manually
@@ -378,7 +363,6 @@ python sync_agent_theme.py --input frontend/themes/liangshan/wuyong_writing-spri
 Brotherhood-UI/
   backend/
   docs/
-    macos-first-run.md
     openclaw-integration.md
     task-routing-rules.md
   frontend/
@@ -390,10 +374,7 @@ Brotherhood-UI/
         props/
         audio/
   Brotherhood-UI Launcher.bat
-  Brotherhood-UI Launcher.app/
-  Brotherhood-UI Launcher.command
   Create Desktop Shortcuts.bat
-  Create Desktop Shortcuts.command
   brotherhood-ui.bat
   brotherhood-ui.ps1
   brotherhood-ui.sh
@@ -490,7 +471,7 @@ OpenClaw 自然語言任務 -> 狀態路由 -> 英雄/場景映射 -> 前端即�
 
 ### 這個版本的重點
 
-- Windows 和 macOS 現在都有單一 Launcher，可直接點 `Start / Check / Open Board / Stop`
+- Windows 提供單一 Launcher；macOS 則可直接用 `python3 brotherhood_ui_launcher.py` 打開 GUI
 - 可透過 `openclaw_session_watch.py` 自動鏡像本機 OpenClaw 會話
 - 6 種狀態各自交給不同英雄，不再靠單一角色硬撐全部流程
 - 關鍵字路由已擴充到大量桌面端口語操作
@@ -558,36 +539,21 @@ Launcher 按鈕說明：
 python3 -m pip install -r backend/requirements.txt
 ```
 
-如果你是從 GitHub 下載專案，而 macOS 擋住 `.command` 檔，先執行一次：
+然後直接在 Terminal 執行 GUI：
 
 ```bash
-xattr -dr com.apple.quarantine .
-chmod +x "Brotherhood-UI Launcher.command" "Create Desktop Shortcuts.command" "brotherhood-ui.sh"
-```
-
-先建立桌面啟動器一次：
-
-```bash
-./Create\ Desktop\ Shortcuts.command
-```
-
-之後直接用 App Launcher：
-
-```bash
-open "Brotherhood-UI Launcher.app"
+python3 brotherhood_ui_launcher.py
 ```
 
 推薦測試流程：
 
-1. 先執行一次 `./Create\ Desktop\ Shortcuts.command`
-2. 在桌面雙擊 `Brotherhood-UI Launcher.app`
-3. 點擊 `Start`
-4. 保持本機 OpenClaw 聊天頁開著
-5. 正常送出一條任務
-6. 觀察 Brotherhood-UI 是否自動切換英雄與狀態
-
-如果 Finder 仍然擋住檔案，先對 `Brotherhood-UI Launcher.app` 按右鍵再選 `Open` 一次。  
-詳細說明見 `docs/macos-first-run.md`
+1. 打開 Terminal
+2. `cd` 到專案目錄
+3. 執行 `python3 brotherhood_ui_launcher.py`
+4. 點擊 `Start`
+5. 保持本機 OpenClaw 聊天頁開著
+6. 正常送出一條任務
+7. 觀察 Brotherhood-UI 是否自動切換英雄與狀態
 
 ### 手動 / 開發模式
 
@@ -666,7 +632,7 @@ python task_board.py done "任務完成，回到待命"
 
 - `openclaw_session_watch.py` 會監看本機 OpenClaw 當前會話，並把狀態鏡像到 `state.json`
 - `Brotherhood-UI Launcher.bat` 是 Windows 上最推薦的入口
-- `Brotherhood-UI Launcher.app` 是 macOS 上最推薦的入口
+- `python3 brotherhood_ui_launcher.py` 是 macOS 上最推薦的入口
 - `brotherhood-ui.bat doctor` 可檢查後端、watcher heartbeat 與 OpenClaw 會話發現是否正常
 - `brotherhood-ui.sh doctor` 可在 macOS / Linux 上做同樣的檢查
 - `openclaw_bridge.py` 仍可用於手動注入任務生命週期事件
@@ -728,7 +694,6 @@ python sync_agent_theme.py --input frontend/themes/liangshan/wuyong_writing-spri
 Brotherhood-UI/
   backend/
   docs/
-    macos-first-run.md
     task-routing-rules.md
     openclaw-integration.md
   frontend/
@@ -740,10 +705,7 @@ Brotherhood-UI/
         props/
         audio/
   Brotherhood-UI Launcher.bat
-  Brotherhood-UI Launcher.app/
-  Brotherhood-UI Launcher.command
   Create Desktop Shortcuts.bat
-  Create Desktop Shortcuts.command
   brotherhood-ui.bat
   brotherhood-ui.ps1
   brotherhood-ui.sh
