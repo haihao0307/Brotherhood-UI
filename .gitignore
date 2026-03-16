@@ -26,3 +26,5 @@ cloudflared.out
 healthcheck.log
 backend.log
 frontend/office_bg.png
+progress.md
+output/web-game/
