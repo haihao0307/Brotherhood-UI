@@ -10,6 +10,8 @@
     <img src="https://img.shields.io/badge/Phaser-Frontend-3F51B5?style=flat-square" alt="Phaser frontend" />
     <img src="https://img.shields.io/badge/OpenClaw-Local%20Auto%20Sync-0F766E?style=flat-square" alt="OpenClaw local auto sync" />
     <img src="https://img.shields.io/badge/Desktop%20Ops-Routed-7C3AED?style=flat-square" alt="Desktop ops routed" />
+    <img src="https://img.shields.io/badge/Launcher-One%20Click-B91C1C?style=flat-square" alt="Launcher one click" />
+    <img src="https://img.shields.io/badge/Windows%20%2B%20macOS-Supported-2563EB?style=flat-square" alt="Windows and macOS supported" />
   </p>
   <img src="./banner.png" alt="Brotherhood-UI banner" width="100%" />
 </div>
@@ -19,7 +21,20 @@
 ---
 ![songjiang_researching](https://github.com/user-attachments/assets/02431dbb-549d-449c-b49b-1c34473f4e15)![linchong_syncing](https://github.com/user-attachments/assets/30271876-506a-4578-bf1b-e96a3e64db0a)![wuyong_writing](https://github.com/user-attachments/assets/b53ce5bb-f696-4314-8133-dd3b9d465c22)![luzhishen_error](https://github.com/user-attachments/assets/afe5044a-054d-46c0-a4df-8fed75bb4879)![wusong_executing](https://github.com/user-attachments/assets/33bd830d-d93f-4871-9c88-c5d9f6ca3fb6)
 
-> Best current flow: run `.\brotherhood-ui.bat auto`, keep your local OpenClaw chat open, and let Brotherhood-UI mirror the session automatically.
+> Best current flow: open the platform launcher, click `Start`, keep your local OpenClaw chat open, and let Brotherhood-UI mirror the session automatically.
+
+### Demo Slots
+
+Replace the GIF files in `docs/media/` with the same filenames and the README will update automatically on GitHub.
+
+<p align="center">
+  <img src="./docs/media/demo-main.gif" alt="Brotherhood-UI main demo" width="100%" />
+</p>
+<p align="center">
+  <img src="./docs/media/demo-launcher.gif" alt="Brotherhood-UI launcher demo" width="32%" />
+  <img src="./docs/media/demo-sync.gif" alt="Brotherhood-UI sync demo" width="32%" />
+  <img src="./docs/media/demo-routing.gif" alt="Brotherhood-UI routing demo" width="32%" />
+</p>
 
 
 ## English
@@ -85,8 +100,8 @@ User natural language
 
 ### Why This Version Matters
 
+- One-click launcher flow for both Windows and macOS
 - Automatic local OpenClaw session mirroring through `openclaw_session_watch.py`
-- One-command Windows entrypoint through `.\brotherhood-ui.bat auto`
 - 6-state hero performance model instead of a single character doing everything
 - Natural-language routing expanded for real desktop operations on Windows and macOS
 - Asset pipeline and `theme.json` workflow tuned for fast scene iteration
@@ -117,25 +132,62 @@ Install dependencies once:
 python -m pip install -r backend/requirements.txt
 ```
 
-Then start everything with one command:
+Create desktop shortcuts once:
 
 ```powershell
-.\brotherhood-ui.bat auto
+.\Create Desktop Shortcuts.bat
 ```
 
-Useful helper commands:
+Then use the launcher:
 
 ```powershell
-.\brotherhood-ui.bat doctor
-.\brotherhood-ui.bat stop
+.\Brotherhood-UI Launcher.bat
 ```
 
 Recommended test:
 
-1. Run `.\brotherhood-ui.bat auto`
-2. Keep your local OpenClaw web chat open
-3. Send a normal task such as `Help me inspect the OpenClaw docs structure`
-4. Watch Brotherhood-UI switch through heroes and states automatically
+1. Run `.\Create Desktop Shortcuts.bat` once
+2. Double-click `Brotherhood-UI Launcher` on your desktop
+3. Click `Start`
+4. Keep your local OpenClaw web chat open
+5. Send a normal task such as `Help me inspect the OpenClaw docs structure`
+6. Watch Brotherhood-UI switch through heroes and states automatically
+
+Launcher buttons:
+
+- `Start`: start backend, start OpenClaw sync, and open the board
+- `Check`: verify backend health, watcher heartbeat, and session discovery
+- `Open Board`: reopen the UI page without restarting services
+- `Stop`: stop helper-managed backend and watcher
+
+### Recommended Start (macOS)
+
+Install dependencies once:
+
+```bash
+python3 -m pip install -r backend/requirements.txt
+```
+
+Create the desktop launcher once:
+
+```bash
+./Create\ Desktop\ Shortcuts.command
+```
+
+Then use the launcher:
+
+```bash
+./Brotherhood-UI\ Launcher.command
+```
+
+Recommended test:
+
+1. Run `./Create\ Desktop\ Shortcuts.command` once
+2. Double-click `Brotherhood-UI Launcher.command` on your desktop
+3. Click `Start`
+4. Keep your local OpenClaw web chat open
+5. Send a normal task such as `Help me inspect the OpenClaw docs structure`
+6. Watch Brotherhood-UI switch through heroes and states automatically
 
 ### Manual / Dev Start
 
@@ -151,6 +203,14 @@ Start the backend:
 python backend/app.py
 ```
 
+On macOS/Linux you can use the shell helper:
+
+```bash
+./brotherhood-ui.sh auto
+./brotherhood-ui.sh doctor
+./brotherhood-ui.sh stop
+```
+
 Default backend URL:
 
 ```text
@@ -158,7 +218,7 @@ http://127.0.0.1:18791
 ```
 
 On some Windows setups the reachable local address may be another LAN address printed by Flask.  
-If you use the helper script, prefer `.\brotherhood-ui.bat open` or `.\brotherhood-ui.bat auto`.
+If you use the launcher or helper scripts, they will try to open the reachable board address automatically.
 
 Manual state test:
 
@@ -216,7 +276,7 @@ Windows helper:
 .\brotherhood-ui.bat done "Task completed, back to standby"
 ```
 
-Automatic local OpenClaw sync:
+CLI alternative for automatic local OpenClaw sync:
 
 ```powershell
 .\brotherhood-ui.bat auto
@@ -236,10 +296,11 @@ Stop helper-managed services:
 
 Recommended flow:
 
-1. Run `.\brotherhood-ui.bat auto`
-2. Open or keep using your local OpenClaw web chat
-3. Send a task to OpenClaw normally
-4. Let `openclaw_session_watch.py` mirror the active local session into Brotherhood-UI
+1. Open `Brotherhood-UI Launcher`
+2. Click `Start`
+3. Open or keep using your local OpenClaw web chat
+4. Send a task to OpenClaw normally
+5. Let `openclaw_session_watch.py` mirror the active local session into Brotherhood-UI
 
 ### Theme System
 
@@ -262,10 +323,18 @@ Most visual changes can be made by replacing assets and editing `theme.json` wit
 ### OpenClaw Integration
 
 - `openclaw_session_watch.py` watches the active local OpenClaw session and mirrors it into `state.json`
-- `brotherhood-ui.bat auto` is the recommended first-run entrypoint
+- `Brotherhood-UI Launcher.bat` is the recommended first-run entrypoint on Windows
+- `Brotherhood-UI Launcher.command` is the recommended first-run entrypoint on macOS
 - `brotherhood-ui.bat doctor` checks backend health, watcher heartbeat, and OpenClaw session discovery
+- `brotherhood-ui.sh doctor` provides the same check flow on macOS/Linux
 - `openclaw_bridge.py` remains available when you want to inject lifecycle events manually
 - Integration notes live in `docs/openclaw-integration.md`
+
+### Release Automation
+
+- Push to `main` automatically creates a new GitHub Release
+- Release tags use the format `auto-YYYYMMDD-HHMMSS-<short_sha>`
+- GitHub generates release notes automatically from the pushed changes
 
 ### Asset Sync Tool
 
@@ -309,8 +378,16 @@ Brotherhood-UI/
         theme.json
         props/
         audio/
+  Brotherhood-UI Launcher.bat
+  Brotherhood-UI Launcher.command
+  Create Desktop Shortcuts.bat
+  Create Desktop Shortcuts.command
   brotherhood-ui.bat
   brotherhood-ui.ps1
+  brotherhood-ui.sh
+  brotherhood_ui_launcher.py
+  create_desktop_shortcuts.ps1
+  create_logo_icon.py
   openclaw_bridge.py
   openclaw_session_watch.py
   openclaw_sync_doctor.py
@@ -401,8 +478,8 @@ OpenClaw 自然語言任務 -> 狀態路由 -> 英雄/場景映射 -> 前端即�
 
 ### 這個版本的重點
 
+- Windows 和 macOS 現在都有單一 Launcher，可直接點 `Start / Check / Open Board / Stop`
 - 可透過 `openclaw_session_watch.py` 自動鏡像本機 OpenClaw 會話
-- Windows 現在有一鍵入口：`.\brotherhood-ui.bat auto`
 - 6 種狀態各自交給不同英雄，不再靠單一角色硬撐全部流程
 - 關鍵字路由已擴充到大量桌面端口語操作
 - `theme.json` 與素材同步工具的迭代流程更順
@@ -433,25 +510,62 @@ OpenClaw 自然語言任務 -> 狀態路由 -> 英雄/場景映射 -> 前端即�
 python -m pip install -r backend/requirements.txt
 ```
 
-之後直接一鍵啟動：
+先建立桌面快捷方式一次：
 
 ```powershell
-.\brotherhood-ui.bat auto
+.\Create Desktop Shortcuts.bat
 ```
 
-常用輔助命令：
+之後直接用 Launcher：
 
 ```powershell
-.\brotherhood-ui.bat doctor
-.\brotherhood-ui.bat stop
+.\Brotherhood-UI Launcher.bat
 ```
 
 推薦測試流程：
 
-1. 執行 `.\brotherhood-ui.bat auto`
-2. 保持本機 OpenClaw 聊天頁開著
-3. 正常送出一條任務
-4. 觀察 Brotherhood-UI 是否自動切換英雄與狀態
+1. 先執行一次 `.\Create Desktop Shortcuts.bat`
+2. 在桌面雙擊 `Brotherhood-UI Launcher`
+3. 點擊 `Start`
+4. 保持本機 OpenClaw 聊天頁開著
+5. 正常送出一條任務
+6. 觀察 Brotherhood-UI 是否自動切換英雄與狀態
+
+Launcher 按鈕說明：
+
+- `Start`：啟動後端、啟動 OpenClaw 同步、打開面板
+- `Check`：檢查後端、watcher heartbeat 與會話發現
+- `Open Board`：只重新打開 UI 頁面
+- `Stop`：停止整個系統
+
+### 推薦啟動方式（macOS）
+
+先安裝依賴一次：
+
+```bash
+python3 -m pip install -r backend/requirements.txt
+```
+
+先建立桌面啟動器一次：
+
+```bash
+./Create\ Desktop\ Shortcuts.command
+```
+
+之後直接用 Launcher：
+
+```bash
+./Brotherhood-UI\ Launcher.command
+```
+
+推薦測試流程：
+
+1. 先執行一次 `./Create\ Desktop\ Shortcuts.command`
+2. 在桌面雙擊 `Brotherhood-UI Launcher.command`
+3. 點擊 `Start`
+4. 保持本機 OpenClaw 聊天頁開著
+5. 正常送出一條任務
+6. 觀察 Brotherhood-UI 是否自動切換英雄與狀態
 
 ### 手動 / 開發模式
 
@@ -467,6 +581,14 @@ python -m pip install -r backend/requirements.txt
 python backend/app.py
 ```
 
+在 macOS / Linux 上也可以直接用 shell helper：
+
+```bash
+./brotherhood-ui.sh auto
+./brotherhood-ui.sh doctor
+./brotherhood-ui.sh stop
+```
+
 預設後端位址：
 
 ```text
@@ -474,7 +596,7 @@ http://127.0.0.1:18791
 ```
 
 有些 Windows 環境實際可用的本機位址會是 Flask 啟動時列出的另一個區網位址。  
-如果用輔助腳本，優先用 `.\brotherhood-ui.bat open` 或 `.\brotherhood-ui.bat auto`。
+如果用 Launcher 或輔助腳本，會自動優先打開可用位址。
 
 直接切換狀態測試：
 
@@ -521,10 +643,18 @@ python task_board.py done "任務完成，回到待命"
 ### OpenClaw 自動同步
 
 - `openclaw_session_watch.py` 會監看本機 OpenClaw 當前會話，並把狀態鏡像到 `state.json`
-- `brotherhood-ui.bat auto` 會啟動後端、啟動 watcher，並打開面板
+- `Brotherhood-UI Launcher.bat` 是 Windows 上最推薦的入口
+- `Brotherhood-UI Launcher.command` 是 macOS 上最推薦的入口
 - `brotherhood-ui.bat doctor` 可檢查後端、watcher heartbeat 與 OpenClaw 會話發現是否正常
+- `brotherhood-ui.sh doctor` 可在 macOS / Linux 上做同樣的檢查
 - `openclaw_bridge.py` 仍可用於手動注入任務生命週期事件
 - 詳細說明見 `docs/openclaw-integration.md`
+
+### Release 自動化
+
+- 每次 push 到 `main` 都會自動建立新的 GitHub Release
+- Tag 格式為 `auto-YYYYMMDD-HHMMSS-<short_sha>`
+- Release 說明會由 GitHub 自動產生
 
 ### 主題系統
 
@@ -586,8 +716,16 @@ Brotherhood-UI/
         theme.json
         props/
         audio/
+  Brotherhood-UI Launcher.bat
+  Brotherhood-UI Launcher.command
+  Create Desktop Shortcuts.bat
+  Create Desktop Shortcuts.command
   brotherhood-ui.bat
   brotherhood-ui.ps1
+  brotherhood-ui.sh
+  brotherhood_ui_launcher.py
+  create_desktop_shortcuts.ps1
+  create_logo_icon.py
   openclaw_bridge.py
   openclaw_session_watch.py
   openclaw_sync_doctor.py

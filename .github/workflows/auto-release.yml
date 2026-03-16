@@ -1,0 +1,45 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release metadata
+        id: meta
+        shell: bash
+        run: |
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          STAMP="$(date -u +'%Y%m%d-%H%M%S')"
+          TAG="auto-${STAMP}-${SHORT_SHA}"
+          TITLE="Auto Release ${STAMP} (${SHORT_SHA})"
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            --target "${GITHUB_SHA}" \
+            --title "${{ steps.meta.outputs.title }}" \
+            --generate-notes
