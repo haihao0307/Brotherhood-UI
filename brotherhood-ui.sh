@@ -118,7 +118,10 @@ fallback = candidates[1] if len(candidates) > 1 else candidates[0]
 def healthy(url: str) -> bool:
     try:
         with urllib.request.urlopen(url.rstrip("/") + "/health", timeout=2) as response:
-            return 200 <= response.status < 300
+            if not (200 <= response.status < 300):
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+            return payload.get("app") == "Brotherhood-UI" and payload.get("status") == "ok"
     except Exception:
         return False
 
@@ -158,12 +161,16 @@ start_backend() {
   local preferred_url
   preferred_url="$(resolve_board_url 1)"
   if PYTHONUTF8=1 "$PYTHON_CMD" - "$preferred_url" <<'PY'
+import json
 import sys
 import urllib.request
 url = sys.argv[1].rstrip("/") + "/health"
 try:
     with urllib.request.urlopen(url, timeout=2) as response:
-        raise SystemExit(0 if 200 <= response.status < 300 else 1)
+        if not (200 <= response.status < 300):
+            raise SystemExit(1)
+        payload = json.loads(response.read().decode("utf-8"))
+        raise SystemExit(0 if payload.get("app") == "Brotherhood-UI" and payload.get("status") == "ok" else 1)
 except Exception:
     raise SystemExit(1)
 PY

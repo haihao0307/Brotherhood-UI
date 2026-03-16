@@ -16,6 +16,56 @@ CLI_HELPER = REPO_ROOT / ("brotherhood-ui.bat" if IS_WINDOWS else "brotherhood-u
 ICON = REPO_ROOT / "logo.ico"
 
 
+def _adjust_hex_color(color: str, delta: int) -> str:
+    color = color.lstrip("#")
+    channels = [int(color[i : i + 2], 16) for i in range(0, 6, 2)]
+    adjusted = [max(0, min(255, value + delta)) for value in channels]
+    return "#" + "".join(f"{value:02x}" for value in adjusted)
+
+
+class ColorButton(tk.Label):
+    def __init__(self, parent: tk.Widget, text: str, command, color: str) -> None:
+        self.command = command
+        self.normal_bg = color
+        self.hover_bg = _adjust_hex_color(color, 18)
+        self.disabled_bg = "#3a3a3a"
+        self.enabled = True
+        super().__init__(
+            parent,
+            text=text,
+            font=("Segoe UI", 10, "bold"),
+            bg=self.normal_bg,
+            fg="white",
+            padx=18,
+            pady=10,
+            cursor="hand2",
+            bd=0,
+            relief="flat",
+        )
+        self.bind("<Button-1>", self._on_click)
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+
+    def set_enabled(self, enabled: bool) -> None:
+        self.enabled = enabled
+        if enabled:
+            self.configure(bg=self.normal_bg, fg="white", cursor="hand2")
+        else:
+            self.configure(bg=self.disabled_bg, fg="#cfcfcf", cursor="arrow")
+
+    def _on_click(self, _event) -> None:
+        if self.enabled:
+            self.command()
+
+    def _on_enter(self, _event) -> None:
+        if self.enabled:
+            self.configure(bg=self.hover_bg)
+
+    def _on_leave(self, _event) -> None:
+        if self.enabled:
+            self.configure(bg=self.normal_bg)
+
+
 class LauncherApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -114,27 +164,13 @@ class LauncherApp:
         self.log.insert("end", "Launcher ready.\n")
         self.log.configure(state="disabled")
 
-    def _make_button(self, parent: tk.Widget, text: str, command, color: str) -> tk.Button:
-        return tk.Button(
-            parent,
-            text=text,
-            command=command,
-            font=("Segoe UI", 10, "bold"),
-            bg=color,
-            fg="white",
-            activebackground=color,
-            activeforeground="white",
-            relief="flat",
-            padx=18,
-            pady=10,
-            cursor="hand2",
-        )
+    def _make_button(self, parent: tk.Widget, text: str, command, color: str) -> ColorButton:
+        return ColorButton(parent, text, command, color)
 
     def _set_busy(self, busy: bool) -> None:
         self.busy = busy
-        state = "disabled" if busy else "normal"
         for button in (self.start_button, self.check_button, self.open_button, self.stop_button):
-            button.configure(state=state)
+            button.set_enabled(not busy)
 
     def _append_log(self, text: str) -> None:
         self.log.configure(state="normal")

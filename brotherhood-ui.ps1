@@ -171,7 +171,11 @@ function Test-BoardUrl {
     try {
         $healthUrl = "{0}/health" -f $Url.TrimEnd("/")
         $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec $TimeoutSeconds
-        return ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300)
+        if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) {
+            return $false
+        }
+        $payload = $response.Content | ConvertFrom-Json
+        return ($payload.app -eq "Brotherhood-UI" -and $payload.status -eq "ok")
     } catch {
         return $false
     }

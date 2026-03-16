@@ -731,7 +731,13 @@ def agent_push():
 @app.route("/health", methods=["GET"])
 def health():
     """Health check"""
-    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+    return jsonify(
+        {
+            "status": "ok",
+            "app": "Brotherhood-UI",
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
 
 @app.route("/yesterday-memo", methods=["GET"])

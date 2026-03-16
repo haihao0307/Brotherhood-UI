@@ -39,10 +39,28 @@ def load_json(path: str) -> Any:
 
 
 def check_backend() -> tuple[bool, str]:
-    for url in ("http://127.0.0.1:18791/health", "http://10.20.0.1:18791/health"):
+    candidates = ["http://127.0.0.1:18791/health"]
+    try:
+        import socket
+
+        hostname = socket.gethostname()
+        for result in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            ip = result[4][0]
+            if ip.startswith("127.") or ip.startswith("169.254.") or ip == "0.0.0.0":
+                continue
+            url = f"http://{ip}:18791/health"
+            if url not in candidates:
+                candidates.append(url)
+    except Exception:
+        pass
+
+    for url in candidates:
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
-                if response.status == 200:
+                if response.status != 200:
+                    continue
+                payload = json.load(response)
+                if payload.get("app") == "Brotherhood-UI" and payload.get("status") == "ok":
                     return True, url
         except urllib.error.URLError:
             continue
