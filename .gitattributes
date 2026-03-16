@@ -6,3 +6,4 @@
 *.command text eol=lf
 *.py text eol=lf
 *.md text eol=lf
+*.app/Contents/MacOS/* text eol=lf
