@@ -161,6 +161,9 @@
 
   function clearCurrentBubble(appState) {
     if (appState.bubble && appState.bubble.container) appState.bubble.container.destroy();
+    if (appState.bubble && appState.bubble.domNode && appState.bubble.domNode.parentNode) {
+      appState.bubble.domNode.parentNode.removeChild(appState.bubble.domNode);
+    }
     appState.bubble = null;
   }
 
@@ -205,6 +208,58 @@
     return base;
   }
 
+  function getBubbleAnchor(hero) {
+    const topY = hero.y - hero.displayHeight;
+    return {
+      anchorX: hero.x,
+      anchorY: topY - 18
+    };
+  }
+
+  function getBubbleDomPosition(appState, hero) {
+    const scene = appState && appState.sceneRef ? appState.sceneRef : null;
+    const canvas = scene && scene.game ? scene.game.canvas : null;
+    if (!scene || !canvas || !hero) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) return null;
+    const sceneWidth = scene.scale && scene.scale.width ? scene.scale.width : canvas.width;
+    const sceneHeight = scene.scale && scene.scale.height ? scene.scale.height : canvas.height;
+    if (!sceneWidth || !sceneHeight) return null;
+    const anchor = getBubbleAnchor(hero);
+    const scaleX = rect.width / sceneWidth;
+    const scaleY = rect.height / sceneHeight;
+    return {
+      anchorX: anchor.anchorX,
+      anchorY: anchor.anchorY,
+      domLeft: anchor.anchorX * scaleX,
+      domTop: anchor.anchorY * scaleY,
+      scaleX: scaleX,
+      scaleY: scaleY
+    };
+  }
+
+  function getBubbleDomMetrics(domNode, bubbleTextStyle) {
+    if (!domNode) {
+      return {
+        domWidth: 0,
+        domHeight: 0,
+        lineCount: 1
+      };
+    }
+    const rect = domNode.getBoundingClientRect();
+    const computed = window.getComputedStyle(domNode);
+    const computedLineHeight = parseFloat(computed.lineHeight);
+    const fallbackLineHeight = bubbleTextStyle.fontSize * 1.45;
+    const lineHeight = Number.isFinite(computedLineHeight) ? computedLineHeight : fallbackLineHeight;
+    const domWidth = Math.ceil(rect.width || 0);
+    const domHeight = Math.ceil(rect.height || 0);
+    return {
+      domWidth: domWidth,
+      domHeight: domHeight,
+      lineCount: Math.max(1, lineHeight > 0 ? Math.round(domHeight / lineHeight) : 1)
+    };
+  }
+
   function showBubble(appState, text, options) {
     const scene = appState.sceneRef;
     const opts = options || {};
@@ -219,35 +274,25 @@
 
     const bubbleTextStyle = getBubbleTextStyle(window);
 
-    const txt = scene.add.text(0, 0, text, {
-      fontFamily: bubbleTextStyle.fontFamily,
-      fontSize: bubbleTextStyle.fontSize + 'px',
-      fontStyle: String(bubbleTextStyle.fontWeight),
-      color: bubbleTextStyle.color,
-      stroke: bubbleTextStyle.stroke,
-      strokeThickness: bubbleTextStyle.strokeThickness,
-      lineSpacing: bubbleTextStyle.lineSpacing,
-      wordWrap: { width: bubbleTextStyle.maxW, useAdvancedWrap: true }
-    }).setOrigin(0.5, 0.5);
-    if (typeof txt.setResolution === 'function') {
-      txt.setResolution(Math.max(2, Math.ceil(window.devicePixelRatio || 1)));
+    const domNode = appState.bubbleOverlayRoot && typeof document !== 'undefined'
+      ? document.createElement('div')
+      : null;
+    if (domNode && appState.bubbleOverlayRoot) {
+      domNode.className = 'bubble-text-overlay';
+      domNode.textContent = String(text || '');
+      domNode.setAttribute('data-platform-preset', bubbleTextStyle.platformPreset);
+      appState.bubbleOverlayRoot.appendChild(domNode);
     }
-    txt.setPadding(
-      bubbleTextStyle.textPadding,
-      bubbleTextStyle.textPadding,
-      bubbleTextStyle.textPadding,
-      bubbleTextStyle.textPadding
-    );
 
-    const wrappedLines = typeof txt.getWrappedText === 'function'
-      ? txt.getWrappedText(String(text || ''))
-      : String(text || '').split(/\r?\n/);
-    const lineCount = Math.max(1, Array.isArray(wrappedLines) ? wrappedLines.length : 1);
-    const w = clamp(txt.width + bubbleTextStyle.padX * 2, 60, bubbleTextStyle.maxW + bubbleTextStyle.padX * 2);
-    const h = Math.max(42, txt.height + bubbleTextStyle.padY * 2);
+    const domMetrics = getBubbleDomMetrics(domNode, bubbleTextStyle);
+    const textWidth = domMetrics.domWidth;
+    const textHeight = domMetrics.domHeight;
+    const lineCount = domMetrics.lineCount;
+    const w = clamp(textWidth + bubbleTextStyle.padX * 2, 60, bubbleTextStyle.maxW + bubbleTextStyle.padX * 2);
+    const h = Math.max(42, textHeight + bubbleTextStyle.padY * 2);
     const innerWidth = Math.max(0, w - bubbleTextStyle.padX * 2);
     const innerHeight = Math.max(0, h - bubbleTextStyle.padY * 2);
-    const textFits = txt.width <= innerWidth && txt.height <= innerHeight;
+    const textFits = textWidth <= innerWidth && textHeight <= innerHeight;
 
     const g = scene.add.graphics();
     g.fillStyle(0xfff7d6, 0.98);
@@ -257,22 +302,28 @@
     g.fillTriangle(-10, h / 2 - 2, 10, h / 2 - 2, 0, h / 2 + 12);
     g.strokeTriangle(-10, h / 2 - 2, 10, h / 2 - 2, 0, h / 2 + 12);
 
-    const c = scene.add.container(0, 0, [g, txt]);
+    const c = scene.add.container(0, 0, [g]);
     c.setDepth(9999);
 
     const durationMs = Math.max(600, Number(opts.durationMs || 6500));
+    const anchor = getBubbleAnchor(hero);
     appState.bubble = {
       container: c,
+      domNode: domNode,
       hideAt: scene.time.now + durationMs,
       speaker: speaker,
       heroId: opts.heroId || null,
       textStyle: bubbleTextStyle,
       debugLayout: {
         text: String(text || ''),
+        anchorX: anchor.anchorX,
+        anchorY: anchor.anchorY,
+        domWidth: textWidth,
+        domHeight: textHeight,
         bubbleWidth: w,
         bubbleHeight: h,
-        textWidth: txt.width,
-        textHeight: txt.height,
+        textWidth: textWidth,
+        textHeight: textHeight,
         lineCount: lineCount,
         textFits: textFits
       }
@@ -289,9 +340,26 @@
         ? appState.engine.getActorForSpeaker(bubble.speaker || 'main')
         : (appState.engine && appState.engine.hero));
     if (!scene || !hero || !bubble || !bubble.container) return;
-    const topY = hero.y - hero.displayHeight;
-    bubble.container.x = hero.x;
-    bubble.container.y = topY - 18;
+    const domPosition = getBubbleDomPosition(appState, hero);
+    const anchor = domPosition || getBubbleAnchor(hero);
+    bubble.container.x = anchor.anchorX;
+    bubble.container.y = anchor.anchorY;
+    if (bubble.domNode && domPosition) {
+      bubble.domNode.style.left = domPosition.domLeft + 'px';
+      bubble.domNode.style.top = domPosition.domTop + 'px';
+    }
+    if (bubble.debugLayout) {
+      const domMetrics = getBubbleDomMetrics(bubble.domNode, bubble.textStyle || getBubbleTextStyle(window));
+      bubble.debugLayout.anchorX = anchor.anchorX;
+      bubble.debugLayout.anchorY = anchor.anchorY;
+      bubble.debugLayout.domLeft = domPosition ? domPosition.domLeft : 0;
+      bubble.debugLayout.domTop = domPosition ? domPosition.domTop : 0;
+      bubble.debugLayout.domWidth = domMetrics.domWidth;
+      bubble.debugLayout.domHeight = domMetrics.domHeight;
+      bubble.debugLayout.textWidth = domMetrics.domWidth;
+      bubble.debugLayout.textHeight = domMetrics.domHeight;
+      bubble.debugLayout.lineCount = domMetrics.lineCount;
+    }
   }
 
   function setStatusLine(appState, state, detail, options, stateLabels, defaultDetails, ui) {

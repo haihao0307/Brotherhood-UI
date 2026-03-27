@@ -395,6 +395,17 @@
     HERO_NAMES.luzhishen = tr('hero.luzhishen');
   }
 
+  function ensureBubbleOverlayRoot() {
+    const host = document.getElementById('game-container');
+    if (!host) return null;
+    let root = host.querySelector('.bubble-text-overlay-root');
+    if (root) return root;
+    root = document.createElement('div');
+    root.className = 'bubble-text-overlay-root';
+    host.appendChild(root);
+    return root;
+  }
+
   async function init() {
     const appState = {
       supportsWebP: false,
@@ -417,6 +428,7 @@
       lastLine: '',
       engine: null,
       sceneRef: null,
+      bubbleOverlayRoot: null,
       bubble: null // { container, hideAt }
       ,
       activeAudioRole: null,
@@ -495,6 +507,7 @@
       }
     };
 
+    appState.bubbleOverlayRoot = ensureBubbleOverlayRoot();
     new Phaser.Game(config);
 
     // Panels
@@ -555,8 +568,16 @@
         bubbleDebug: appState.bubble ? {
           heroId: appState.bubble.heroId || null,
           speaker: appState.bubble.speaker || null,
+          renderMode: appState.bubble.domNode ? 'dom' : 'canvas',
+          domVisible: !!(appState.bubble.domNode && appState.bubble.domNode.isConnected),
           textStyle: appState.bubble.textStyle ? { ...appState.bubble.textStyle } : null,
           text: appState.bubble.debugLayout ? appState.bubble.debugLayout.text : '',
+          anchorX: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.anchorX || 0) : 0,
+          anchorY: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.anchorY || 0) : 0,
+          domLeft: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domLeft || 0) : 0,
+          domTop: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domTop || 0) : 0,
+          domWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domWidth || 0) : 0,
+          domHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domHeight || 0) : 0,
           bubbleWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleWidth || 0) : 0,
           bubbleHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleHeight || 0) : 0,
           textWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textWidth || 0) : 0,
