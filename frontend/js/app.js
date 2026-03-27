@@ -146,6 +146,13 @@
     return entries[0];
   }
 
+  function getAdaptiveBubbleDurationMs(text, options) {
+    if (typeof dialogueRuntime.getAdaptiveBubbleDurationMs === 'function') {
+      return dialogueRuntime.getAdaptiveBubbleDurationMs(text, options);
+    }
+    return Math.max(2600, Math.min(5200, String(text || '').length * 180));
+  }
+
   const clearStateGateTimer = typeof bootstrapRuntime.clearStateGateTimer === 'function'
     ? bootstrapRuntime.clearStateGateTimer
     : function () {};
@@ -209,6 +216,7 @@
       getHeroDialogueLoopConfig,
       pickDialogueEntry,
       randBetween,
+      getAdaptiveBubbleDurationMs,
       showBubble: uiApi.showBubble,
       clearCurrentBubble: uiApi.clearCurrentBubble,
       isHeroMoving

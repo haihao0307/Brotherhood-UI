@@ -24,6 +24,32 @@ function loadDialogueRuntime() {
   return context.window.BrotherhoodDialogueRuntime;
 }
 
+function loadDialogueScheduler(extraWindow) {
+  const context = {
+    window: {
+      BrotherhoodDialogueScheduler: {},
+      ...extraWindow,
+    },
+    console,
+    Math,
+    Number,
+    String,
+    Array,
+    Object,
+    Set,
+    Date,
+    setTimeout: (fn) => ({ fn }),
+    clearTimeout: () => {},
+  };
+  context.window = context.window;
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'frontend', 'js', 'app-dialogue-scheduler.js'),
+    'utf8'
+  );
+  vm.runInNewContext(source, context, { filename: 'app-dialogue-scheduler.js' });
+  return context.window.BrotherhoodDialogueScheduler;
+}
+
 test('adaptive bubble duration scales up for long lines and stays modest for short lines', () => {
   const runtime = loadDialogueRuntime();
   assert.equal(typeof runtime.getAdaptiveBubbleDurationMs, 'function');
@@ -45,4 +71,39 @@ test('adaptive bubble duration rewards punctuation and line breaks', () => {
 
   assert.ok(punctuatedMs > plainMs);
   assert.ok(multilineMs > plainMs);
+});
+
+test('main dialogue loop uses adaptive bubble duration helper', () => {
+  const runtime = loadDialogueRuntime();
+  const scheduler = loadDialogueScheduler();
+  const line = '堂前消息已送達，請立即核對 attachments 與 follow-up notes。';
+  let capturedDurationMs = null;
+
+  const appState = {
+    currentState: 'writing',
+    mainDialogueTimerId: null,
+    lastSupportDialogueAt: 0,
+  };
+  const deps = {
+    randBetween: () => 0,
+    isHeroMoving: () => false,
+    pickDialogueEntry: () => ({ text: line }),
+    showBubble: (_, __, options) => {
+      capturedDurationMs = options.durationMs;
+    },
+    getAdaptiveBubbleDurationMs: runtime.getAdaptiveBubbleDurationMs,
+  };
+
+  scheduler.scheduleNextMainDialogue(appState, 'writing', {
+    entries: [{ text: line }],
+    firstDelayMinMs: 0,
+    firstDelayMaxMs: 0,
+    intervalMinMs: 0,
+    intervalMaxMs: 0,
+    minGapAfterSupportMs: 0,
+    dialogueKey: 'songjiang:writing',
+  }, deps, { first: true });
+
+  appState.mainDialogueTimerId.fn();
+  assert.equal(capturedDurationMs, runtime.getAdaptiveBubbleDurationMs(line));
 });
