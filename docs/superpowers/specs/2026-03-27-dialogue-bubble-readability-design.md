@@ -1,12 +1,21 @@
 # Dialogue Bubble Readability Optimization Design
 
 **Date:** 2026-03-27
-**Status:** Approved for planning
+**Status:** Approved in conversation, pending written spec review
 **Scope:** Character-head dialogue bubbles only
 
 ## Goal
 
 Improve the readability of the character-head dialogue bubbles in the main UI while preserving the current Liangshan visual language. The minimum delivery must make bubble text look clearer on both Windows and macOS without expanding into a broader typography refactor.
+
+## Confirmed Product Decisions
+
+The following requirements were confirmed during brainstorming and define the minimum delivery:
+
+- Scope is limited to character-head dialogue bubbles only.
+- Minimum delivery must include an automated regression check, not just manual visual tuning.
+- Windows and macOS may use small typography token differences while keeping the same component identity.
+- The bubble may become slightly wider or roomier if that is needed to improve readability, but it must remain the same bubble component.
 
 ## Current Context
 
@@ -40,8 +49,10 @@ The approved direction is the balanced option:
 
 - Bubble text typography only for character-head dialogue bubbles
 - Bubble text token cleanup in the current Phaser implementation
-- Platform-aware typography fallback for Windows and macOS if needed
+- Platform-aware typography fallback for Windows and macOS
 - Readability validation for Chinese and mixed Chinese-English lines
+- A debug-visible representation of the active bubble text preset
+- Automated regression assertions that verify the readability preset is active
 
 ## Out of Scope
 
@@ -52,6 +63,7 @@ The approved direction is the balanced option:
 - Replacing Phaser bubble text with DOM/HTML overlays
 - Redesigning the bubble body, tail, or motion behavior
 - Changes to character animation, scene layout, or theme art
+- Global canvas rendering changes such as `pixelArt` or CSS `image-rendering` in the minimum delivery
 
 ## Design Requirements
 
@@ -73,6 +85,8 @@ The first-pass solution must come from typography tuning, not architecture repla
 - stroke presence, color, and thickness
 
 The intent is to make the bubble text visually cleaner without changing the scene identity.
+
+The minimum delivery should treat these tokens as a small preset surface rather than one-off inline values so they can be tested and adjusted safely later.
 
 ### 3. Reduce blur sources rather than adding decoration
 
@@ -100,7 +114,18 @@ Not allowed:
 - separate visual design per platform
 - different bubble shapes or colors per platform
 
-### 5. Keep the UI visually coherent
+### 5. Include regression-visible state
+
+Because the user explicitly requested a minimum delivery that is not a one-off visual patch, the implementation must expose the active bubble readability preset through the existing debug surface. This allows the regression harness to assert the live typography configuration directly instead of relying only on manual screenshot inspection.
+
+The minimum delivery should verify at least:
+
+- a bubble readability preset is present in debug state
+- the preset includes the active platform identifier
+- the preset includes the live size, spacing, stroke, and width values
+- both main-hero and support-hero bubble flows can surface that metadata during regression
+
+### 6. Keep the UI visually coherent
 
 After optimization, the bubble must still read as part of the current Liangshan scene. The text should feel clearer and calmer, not more modern than the rest of the interface.
 
@@ -114,6 +139,7 @@ This approach is recommended because it:
 - keeps implementation risk low
 - avoids reworking bubble tracking and depth behavior
 - leaves room for small Windows/macOS adjustments without branching the UI design
+- satisfies the minimum requirement for automated regression coverage
 
 ## Rejected Alternatives
 
@@ -137,7 +163,9 @@ The minimum delivery is complete when all of the following are true:
 2. Chinese text no longer appears noticeably fuzzy at the bubble edges in normal viewing conditions.
 3. Mixed Chinese-English lines remain balanced and readable without awkward crowding.
 4. The bubble still feels like the same component, with no redesign of shape, tail, animation, or placement behavior.
-5. No new wrapping regressions, clipping, overflow, or bubble-follow positioning regressions are introduced.
+5. Slightly roomier wrapping, padding, or width changes are acceptable if they improve readability without changing the component identity.
+6. No new wrapping regressions, clipping, overflow, or bubble-follow positioning regressions are introduced.
+7. Automated regression checks fail when the readability preset metadata is missing or falls back to legacy-tight values.
 
 ## Validation Plan
 
@@ -145,6 +173,7 @@ Validation should focus on visual readability rather than purely code-level corr
 
 Minimum validation:
 
+- assert the active readability preset through the debug surface
 - compare before and after bubble text with representative Chinese lines
 - compare before and after bubble text with mixed Chinese-English lines
 - verify the result in Windows
@@ -177,4 +206,6 @@ Preserve the current bubble shape, colors, and follow behavior, and keep any typ
 
 ## Implementation Boundary for the Next Step
 
-The planning phase should assume the implementation touches the bubble rendering path first, centered on [`frontend/js/app-ui-runtime.js`](../../../frontend/js/app-ui-runtime.js), and only expands beyond that if verification shows the blur is being dominated by global canvas configuration.
+The planning phase should assume the implementation touches the bubble rendering path first, centered on [`frontend/js/app-ui-runtime.js`](../../../frontend/js/app-ui-runtime.js), and extends only as far as the existing debug and regression surfaces needed to validate the preset, such as [`frontend/js/app.js`](../../../frontend/js/app.js) and [`frontend_regression_check.js`](../../../frontend_regression_check.js).
+
+It should not expand into global canvas configuration unless the typography-first pass fails visual acceptance after regression-backed verification.
