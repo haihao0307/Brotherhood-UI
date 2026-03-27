@@ -25,21 +25,22 @@ function loadDialogueRuntime() {
 }
 
 function loadDialogueScheduler(extraWindow) {
+  const windowOverrides = extraWindow || {};
   const context = {
     window: {
       BrotherhoodDialogueScheduler: {},
-      ...extraWindow,
+      ...windowOverrides.window,
     },
     console,
-    Math,
-    Number,
-    String,
-    Array,
-    Object,
-    Set,
-    Date,
-    setTimeout: (fn) => ({ fn }),
-    clearTimeout: () => {},
+    Math: windowOverrides.Math || Math,
+    Number: windowOverrides.Number || Number,
+    String: windowOverrides.String || String,
+    Array: windowOverrides.Array || Array,
+    Object: windowOverrides.Object || Object,
+    Set: windowOverrides.Set || Set,
+    Date: windowOverrides.Date || Date,
+    setTimeout: windowOverrides.setTimeout || ((fn) => ({ fn })),
+    clearTimeout: windowOverrides.clearTimeout || (() => {}),
   };
   context.window = context.window;
   const source = fs.readFileSync(
@@ -106,4 +107,94 @@ test('main dialogue loop uses adaptive bubble duration helper', () => {
 
   appState.mainDialogueTimerId.fn();
   assert.equal(capturedDurationMs, runtime.getAdaptiveBubbleDurationMs(line));
+});
+
+test('idle random event preserves an explicit longer duration over computed timing', () => {
+  const scheduler = loadDialogueScheduler();
+  let capturedDurationMs = null;
+
+  const appState = {
+    activeIdleEventHeroId: null,
+    lastIdleEventAtByHero: {},
+    engine: null,
+  };
+  const cfg = {
+    bubbleDurationMs: 3600,
+  };
+  const event = {
+    id: 'idle-explicit-longer',
+    heroId: 'songjiang',
+    text: '收到。',
+    durationMs: 6400,
+  };
+  const deps = {
+    getAdaptiveBubbleDurationMs: () => 3200,
+    showBubble: (_, __, options) => {
+      capturedDurationMs = options.durationMs;
+    },
+  };
+
+  scheduler.triggerIdleRandomEvent(appState, cfg, event, deps);
+
+  assert.equal(capturedDurationMs, 6400);
+});
+
+test('seeded idle random event unlock timer matches the resolved shown duration', () => {
+  const scheduledTimeouts = [];
+  const scheduler = loadDialogueScheduler({
+    Date: {
+      now: () => 1000,
+    },
+    setTimeout: (fn, delayMs) => {
+      const timer = { fn, delayMs };
+      scheduledTimeouts.push(timer);
+      return timer;
+    },
+    clearTimeout: () => {},
+  });
+  let capturedDurationMs = null;
+
+  const appState = {
+    dialogueMode: 'idle_event',
+    bubble: null,
+    engine: {},
+    idleRandomEventTimerId: null,
+    activeIdleEventHeroId: null,
+    lastIdleEventAtByHero: {},
+    lastIdleEventId: null,
+    initialIdleRandomSeedPending: true,
+    supportRoamingUnlocked: false,
+    supportRoamingUnlockTimerId: null,
+  };
+  const cfg = {
+    intervalMinMs: 0,
+    intervalMaxMs: 0,
+    cooldownPerHeroMs: 0,
+    bubbleDurationMs: 3000,
+    pool: [{
+      id: 'seed-songjiang',
+      heroId: 'songjiang',
+      text: '收到。',
+      durationMs: 2000,
+      weight: 1,
+    }],
+  };
+  const deps = {
+    randBetween: () => 0,
+    getAdaptiveBubbleDurationMs: () => 4700,
+    showBubble: (_, __, options) => {
+      capturedDurationMs = options.durationMs;
+    },
+  };
+
+  scheduler.scheduleNextIdleRandomEvent(appState, cfg, deps, {
+    delayMs: 0,
+    heroId: 'songjiang',
+    consumeInitialSeed: true,
+  });
+
+  appState.idleRandomEventTimerId.fn();
+
+  assert.equal(capturedDurationMs, 4700);
+  assert.equal(appState.supportRoamingUnlockTimerId.delayMs, 4700);
 });

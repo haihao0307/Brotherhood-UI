@@ -176,6 +176,7 @@
       }
       appState.activeIdleEventHeroId = null;
     }, highlightMs);
+    return durationMs;
   }
 
   function scheduleNextIdleRandomEvent(appState, cfg, deps, options) {
@@ -201,7 +202,7 @@
         scheduleNextIdleRandomEvent(appState, cfg, deps);
         return;
       }
-      triggerIdleRandomEvent(appState, cfg, event, deps);
+      const durationMs = triggerIdleRandomEvent(appState, cfg, event, deps);
       if (opts.consumeInitialSeed) {
         appState.initialIdleRandomSeedPending = false;
         if (appState.supportRoamingUnlockTimerId) {
@@ -212,7 +213,7 @@
           appState.supportRoamingUnlockTimerId = null;
           appState.supportRoamingUnlocked = true;
           syncSupportRoaming(appState);
-        }, Math.max(1200, Number(event.durationMs || cfg.bubbleDurationMs)));
+        }, Math.max(1200, Number(durationMs || 0)));
       }
       scheduleNextIdleRandomEvent(appState, cfg, deps);
     }, delayMs);
