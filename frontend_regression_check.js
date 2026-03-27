@@ -112,6 +112,16 @@ async function readDebugState(page) {
   });
 }
 
+async function readBrowserBubblePlatformPreset(page) {
+  return page.evaluate(() => {
+    const nav = window.navigator || {};
+    const raw = String((nav.userAgentData && nav.userAgentData.platform) || nav.platform || '').toLowerCase();
+    if (raw.includes('mac')) return 'macos';
+    if (raw.includes('win')) return 'windows';
+    return 'default';
+  });
+}
+
 async function refreshState(page) {
   return page.evaluate(async () => {
     if (!window.StarOfficeApp || typeof window.StarOfficeApp.fetchStatusNow !== 'function') return null;
@@ -191,16 +201,9 @@ function assertBubbleDebugMetadata(state, label) {
   }
 }
 
-function getExpectedBubblePlatformPreset() {
-  if (process.platform === 'win32') return 'windows';
-  if (process.platform === 'darwin') return 'macos';
-  return 'default';
-}
-
-function assertBubbleReadabilityPreset(state, label) {
+function assertBubbleReadabilityPreset(state, label, expectedPlatformPreset) {
   assertBubbleDebugMetadata(state, label);
   const style = state.bubbleDebug.textStyle;
-  const platformPreset = getExpectedBubblePlatformPreset();
   const expectedStyles = {
     windows: {
       platformPreset: 'windows',
@@ -245,7 +248,10 @@ function assertBubbleReadabilityPreset(state, label) {
       textPadding: 1,
     },
   };
-  const expected = expectedStyles[platformPreset];
+  const expected = expectedStyles[expectedPlatformPreset];
+  if (!expected) {
+    throw new Error(`${label}: unsupported expected platform preset ${JSON.stringify(expectedPlatformPreset)}`);
+  }
   for (const [key, value] of Object.entries(expected)) {
     if (style[key] !== value) {
       throw new Error(`${label}: ${key} mismatch (expected ${JSON.stringify(value)}, got ${JSON.stringify(style[key])})`);
@@ -309,6 +315,7 @@ async function run() {
   try {
     await page.goto(args.url, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => !!window.StarOfficeApp && typeof window.StarOfficeApp.getDebugState === 'function');
+    const browserPlatformPreset = await readBrowserBubblePlatformPreset(page);
 
     await postState(page, { state: 'idle', detail: '回歸測試待命' });
     await refreshState(page);
@@ -332,7 +339,7 @@ async function run() {
         state.bubbleDebug.text === mixedBubbleText,
       Math.max(args.timeoutMs, 5000)
     );
-    assertBubbleReadabilityPreset(mixedBubbleState, 'mixed_language_bubble');
+    assertBubbleReadabilityPreset(mixedBubbleState, 'mixed_language_bubble', browserPlatformPreset);
     assertBubbleContainsText(mixedBubbleState, 'mixed_language_bubble', 'review package is ready');
     checkpoints.push({ label: 'mixed_language_bubble', state: mixedBubbleState });
     await capture(page, args.screenshotDir, '02-mixed-language-bubble');
@@ -348,7 +355,7 @@ async function run() {
         state.bubbleDebug.text === wrappedBubbleText,
       Math.max(args.timeoutMs, 5000)
     );
-    assertBubbleReadabilityPreset(wrappedBubbleState, 'wrapped_debug_bubble');
+    assertBubbleReadabilityPreset(wrappedBubbleState, 'wrapped_debug_bubble', browserPlatformPreset);
     assertBubbleContainsText(wrappedBubbleState, 'wrapped_debug_bubble', 'attachments');
     assertBubbleWrapsWithoutClipping(wrappedBubbleState, 'wrapped_debug_bubble');
     checkpoints.push({ label: 'wrapped_debug_bubble', state: wrappedBubbleState });
@@ -366,7 +373,7 @@ async function run() {
         state.bubbleHeroId === 'songjiang',
       Math.max(args.timeoutMs, 9000)
     );
-    assertBubbleReadabilityPreset(seededEvent, 'seeded_songjiang_event');
+    assertBubbleReadabilityPreset(seededEvent, 'seeded_songjiang_event', browserPlatformPreset);
     checkpoints.push({ label: 'seeded_songjiang_event', state: seededEvent });
     await capture(page, args.screenshotDir, '04-seeded-songjiang-event');
 
@@ -395,7 +402,7 @@ async function run() {
       }),
       Math.max(args.timeoutMs, 10000)
     );
-    assertBubbleReadabilityPreset(writingHandoff, 'writing_handoff_mixed_text');
+    assertBubbleReadabilityPreset(writingHandoff, 'writing_handoff_mixed_text', browserPlatformPreset);
     checkpoints.push({ label: 'writing_handoff', state: writingHandoff });
     await capture(page, args.screenshotDir, '06-writing-handoff');
 
@@ -433,7 +440,7 @@ async function run() {
         state.bubbleHeroId !== 'songjiang',
       Math.max(args.timeoutMs, 15000)
     );
-    assertBubbleReadabilityPreset(idleInterruptEvent, 'idle_interrupt_source');
+    assertBubbleReadabilityPreset(idleInterruptEvent, 'idle_interrupt_source', browserPlatformPreset);
     checkpoints.push({ label: 'idle_interrupt_source', state: idleInterruptEvent });
     const interruptedHeroId = idleInterruptEvent.bubbleHeroId;
     await capture(page, args.screenshotDir, '08-idle-random-event');
