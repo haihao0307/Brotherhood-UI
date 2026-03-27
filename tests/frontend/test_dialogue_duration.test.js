@@ -51,6 +51,13 @@ function loadDialogueScheduler(extraWindow) {
   return context.window.BrotherhoodDialogueScheduler;
 }
 
+function loadAppSource() {
+  return fs.readFileSync(
+    path.join(__dirname, '..', '..', 'frontend', 'js', 'app.js'),
+    'utf8'
+  );
+}
+
 test('adaptive bubble duration scales up for long lines and stays modest for short lines', () => {
   const runtime = loadDialogueRuntime();
   assert.equal(typeof runtime.getAdaptiveBubbleDurationMs, 'function');
@@ -107,6 +114,53 @@ test('main dialogue loop uses adaptive bubble duration helper', () => {
 
   appState.mainDialogueTimerId.fn();
   assert.equal(capturedDurationMs, runtime.getAdaptiveBubbleDurationMs(line));
+});
+
+test('support dialogue loop uses adaptive bubble duration helper', () => {
+  const runtime = loadDialogueRuntime();
+  const scheduler = loadDialogueScheduler();
+  const line = '林教頭已到位，請先核對 support queue 與 escort notes。';
+  let capturedDurationMs = null;
+
+  const appState = {
+    currentState: 'writing',
+    supportDialogueTimerId: null,
+    supportDialogueHeroId: null,
+    lastMainDialogueAt: 0,
+    engine: {
+      getActiveSupportHeroId: () => 'linchong',
+      hasVisibleSupportHero: () => true,
+    },
+  };
+  const deps = {
+    randBetween: () => 0,
+    pickDialogueEntry: () => ({ text: line }),
+    showBubble: (_, __, options) => {
+      capturedDurationMs = options.durationMs;
+    },
+    getAdaptiveBubbleDurationMs: runtime.getAdaptiveBubbleDurationMs,
+  };
+
+  scheduler.scheduleNextSupportDialogue(appState, 'linchong', {
+    entries: [{ text: line }],
+    firstDelayMinMs: 0,
+    firstDelayMaxMs: 0,
+    intervalMinMs: 0,
+    intervalMaxMs: 0,
+    minGapAfterMainMs: 0,
+  }, deps, { first: true });
+
+  appState.supportDialogueTimerId.fn();
+  assert.equal(capturedDurationMs, runtime.getAdaptiveBubbleDurationMs(line));
+});
+
+test('app wires adaptive bubble duration helper into scheduler deps', () => {
+  const appSource = loadAppSource();
+
+  assert.match(
+    appSource,
+    /function getDialogueSchedulerDeps\(\)\s*\{[\s\S]*?getAdaptiveBubbleDurationMs,[\s\S]*?showBubble: uiApi\.showBubble,/,
+  );
 });
 
 test('idle random event preserves an explicit longer duration over computed timing', () => {
