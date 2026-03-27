@@ -26,6 +26,7 @@
 - Do not replace the Phaser bubble with a DOM overlay.
 - Do not touch the bottom status board, tools drawer, or memo typography.
 - Do not change bubble shape, tail, duration logic, depth, or follow positioning.
+- Slightly roomier wrapping, padding, or max width is allowed if that improves readability without changing the component identity.
 - Do not change global canvas settings (`pixelArt`, `image-rendering`) in this plan unless the readability preset still fails acceptance after Task 2. This plan assumes the typography-first path is sufficient.
 
 ### Task 1: Expose Bubble Typography Metadata For Regression

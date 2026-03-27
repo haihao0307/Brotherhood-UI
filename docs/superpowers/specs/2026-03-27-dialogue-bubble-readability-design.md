@@ -1,7 +1,7 @@
 # Dialogue Bubble Readability Optimization Design
 
 **Date:** 2026-03-27
-**Status:** Approved in conversation, pending written spec review
+**Status:** Approved for planning
 **Scope:** Character-head dialogue bubbles only
 
 ## Goal
