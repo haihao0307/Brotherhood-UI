@@ -31,6 +31,7 @@ function parseArgs(argv) {
     timeoutMs: 15000,
     screenshotDir: path.join('output', 'web-game', 'regression'),
     headless: true,
+    platformPreset: null,
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -46,6 +47,9 @@ function parseArgs(argv) {
       i++;
     } else if (arg === '--headless' && next) {
       args.headless = next !== '0' && next !== 'false';
+      i++;
+    } else if (arg === '--platform-preset' && next) {
+      args.platformPreset = next;
       i++;
     }
   }
@@ -120,6 +124,37 @@ async function readBrowserBubblePlatformPreset(page) {
     if (raw.includes('win')) return 'windows';
     return 'default';
   });
+}
+
+async function applyPlatformPresetOverride(context, platformPreset) {
+  if (!platformPreset) return;
+  const normalized = String(platformPreset || '').toLowerCase();
+  const platformMap = {
+    windows: 'Win32',
+    macos: 'MacIntel',
+    default: 'Linux x86_64',
+  };
+  const navigatorPlatform = platformMap[normalized] || platformMap.default;
+  await context.addInitScript(({ preset, platformValue }) => {
+    const defineValue = (target, key, value) => {
+      try {
+        Object.defineProperty(target, key, {
+          configurable: true,
+          get: () => value,
+        });
+      } catch (_) {
+        // Ignore environments that refuse override.
+      }
+    };
+    defineValue(window.navigator, 'platform', platformValue);
+    defineValue(window.navigator, 'userAgentData', {
+      platform: preset,
+      brands: [],
+      mobile: false,
+      getHighEntropyValues: async () => ({ platform: preset }),
+      toJSON: () => ({ platform: preset, brands: [], mobile: false }),
+    });
+  }, { preset: normalized, platformValue: navigatorPlatform });
 }
 
 async function refreshState(page) {
@@ -328,13 +363,14 @@ async function run() {
   ensureDir(args.screenshotDir);
   const browser = await chromium.launch({ headless: args.headless });
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+  await applyPlatformPresetOverride(context, args.platformPreset);
   const page = await context.newPage();
   const checkpoints = [];
 
   try {
     await page.goto(args.url, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => !!window.StarOfficeApp && typeof window.StarOfficeApp.getDebugState === 'function');
-    const browserPlatformPreset = await readBrowserBubblePlatformPreset(page);
+    const browserPlatformPreset = args.platformPreset || await readBrowserBubblePlatformPreset(page);
 
     await postState(page, { state: 'idle', detail: '回歸測試待命' });
     await refreshState(page);
