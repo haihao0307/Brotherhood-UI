@@ -520,6 +520,9 @@
           await narrativeApi.refresh(appState);
         }
       },
+      showDebugBubble: (text, options) => {
+        uiApi.showBubble(appState, String(text || ''), options || {});
+      },
       setAudioRole: (role) => {
         if (!appState.audioManager) return;
         appState.activeAudioRole = String(role || '').trim() || appState.activeAudioRole;
@@ -552,7 +555,14 @@
         bubbleDebug: appState.bubble ? {
           heroId: appState.bubble.heroId || null,
           speaker: appState.bubble.speaker || null,
-          textStyle: appState.bubble.textStyle ? { ...appState.bubble.textStyle } : null
+          textStyle: appState.bubble.textStyle ? { ...appState.bubble.textStyle } : null,
+          text: appState.bubble.debugLayout ? appState.bubble.debugLayout.text : '',
+          bubbleWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleWidth || 0) : 0,
+          bubbleHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleHeight || 0) : 0,
+          textWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textWidth || 0) : 0,
+          textHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textHeight || 0) : 0,
+          lineCount: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.lineCount || 0) : 0,
+          textFits: appState.bubble.debugLayout ? !!appState.bubble.debugLayout.textFits : false
         } : null,
         activeIdleEventHeroId: appState.activeIdleEventHeroId || null,
         idleRandomEventTimerArmed: !!appState.idleRandomEventTimerId,

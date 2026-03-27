@@ -239,8 +239,15 @@
       bubbleTextStyle.textPadding
     );
 
+    const wrappedLines = typeof txt.getWrappedText === 'function'
+      ? txt.getWrappedText(String(text || ''))
+      : String(text || '').split(/\r?\n/);
+    const lineCount = Math.max(1, Array.isArray(wrappedLines) ? wrappedLines.length : 1);
     const w = clamp(txt.width + bubbleTextStyle.padX * 2, 60, bubbleTextStyle.maxW + bubbleTextStyle.padX * 2);
-    const h = clamp(txt.height + bubbleTextStyle.padY * 2, 42, 156);
+    const h = Math.max(42, txt.height + bubbleTextStyle.padY * 2);
+    const innerWidth = Math.max(0, w - bubbleTextStyle.padX * 2);
+    const innerHeight = Math.max(0, h - bubbleTextStyle.padY * 2);
+    const textFits = txt.width <= innerWidth && txt.height <= innerHeight;
 
     const g = scene.add.graphics();
     g.fillStyle(0xfff7d6, 0.98);
@@ -259,7 +266,16 @@
       hideAt: scene.time.now + durationMs,
       speaker: speaker,
       heroId: opts.heroId || null,
-      textStyle: bubbleTextStyle
+      textStyle: bubbleTextStyle,
+      debugLayout: {
+        text: String(text || ''),
+        bubbleWidth: w,
+        bubbleHeight: h,
+        textWidth: txt.width,
+        textHeight: txt.height,
+        lineCount: lineCount,
+        textFits: textFits
+      }
     };
     updateBubblePos(appState);
   }

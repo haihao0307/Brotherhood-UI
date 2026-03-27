@@ -119,6 +119,14 @@ async function refreshState(page) {
   });
 }
 
+async function showDebugBubble(page, text, options) {
+  return page.evaluate(({ bubbleText, bubbleOptions }) => {
+    if (!window.StarOfficeApp || typeof window.StarOfficeApp.showDebugBubble !== 'function') return null;
+    window.StarOfficeApp.showDebugBubble(bubbleText, bubbleOptions || {});
+    return true;
+  }, { bubbleText: text, bubbleOptions: options || {} });
+}
+
 async function postState(page, payload) {
   return page.evaluate(async (body) => {
     const response = await fetch('/set_state', {
@@ -245,8 +253,53 @@ function assertBubbleReadabilityPreset(state, label) {
   }
 }
 
+function assertBubbleDebugLayout(state, label) {
+  const bubble = state && state.bubbleDebug ? state.bubbleDebug : null;
+  if (!bubble || typeof bubble !== 'object') {
+    throw new Error(`${label}: bubble debug layout missing`);
+  }
+  const numericFields = [
+    'bubbleWidth',
+    'bubbleHeight',
+    'textWidth',
+    'textHeight',
+    'lineCount'
+  ];
+  for (const field of numericFields) {
+    if (typeof bubble[field] !== 'number' || !(bubble[field] >= 0)) {
+      throw new Error(`${label}: missing bubble debug field ${field}`);
+    }
+  }
+  if (typeof bubble.text !== 'string' || !bubble.text.trim()) {
+    throw new Error(`${label}: missing bubble debug field text`);
+  }
+  if (typeof bubble.textFits !== 'boolean') {
+    throw new Error(`${label}: missing bubble debug field textFits`);
+  }
+}
+
+function assertBubbleContainsText(state, label, expectedFragment) {
+  assertBubbleDebugLayout(state, label);
+  if (!state.bubbleDebug.text.includes(expectedFragment)) {
+    throw new Error(`${label}: bubble text missing fragment ${JSON.stringify(expectedFragment)}`);
+  }
+}
+
+function assertBubbleWrapsWithoutClipping(state, label) {
+  assertBubbleDebugLayout(state, label);
+  if (state.bubbleDebug.lineCount < 2) {
+    throw new Error(`${label}: expected wrapped bubble but got ${state.bubbleDebug.lineCount} line(s)`);
+  }
+  if (!state.bubbleDebug.textFits) {
+    throw new Error(`${label}: bubble text clips or overflows its container`);
+  }
+}
+
 async function run() {
   const args = parseArgs(process.argv);
+  const mixedBubbleText = '堂前消息已送達，review package is ready.';
+  const wrappedBubbleText = '堂前消息已送達，review package is ready，請立即核對 attachments 與 follow-up notes，確認多行換行後仍完整顯示。';
+  const mixedWritingDetail = '回歸測試：正在撰寫內容';
   ensureDir(args.screenshotDir);
   const browser = await chromium.launch({ headless: args.headless });
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
@@ -268,6 +321,39 @@ async function run() {
     checkpoints.push({ label: 'idle_bootstrap', state: idleState });
     await capture(page, args.screenshotDir, '01-idle-bootstrap');
 
+    await showDebugBubble(page, mixedBubbleText, { heroId: 'songjiang', speaker: 'main', durationMs: 5000 });
+    const mixedBubbleState = await waitForState(
+      page,
+      'mixed language debug bubble',
+      (state) =>
+        state.bubbleVisible &&
+        state.bubbleHeroId === 'songjiang' &&
+        state.bubbleDebug &&
+        state.bubbleDebug.text === mixedBubbleText,
+      Math.max(args.timeoutMs, 5000)
+    );
+    assertBubbleReadabilityPreset(mixedBubbleState, 'mixed_language_bubble');
+    assertBubbleContainsText(mixedBubbleState, 'mixed_language_bubble', 'review package is ready');
+    checkpoints.push({ label: 'mixed_language_bubble', state: mixedBubbleState });
+    await capture(page, args.screenshotDir, '02-mixed-language-bubble');
+
+    await showDebugBubble(page, wrappedBubbleText, { heroId: 'songjiang', speaker: 'main', durationMs: 5000 });
+    const wrappedBubbleState = await waitForState(
+      page,
+      'wrapped debug bubble',
+      (state) =>
+        state.bubbleVisible &&
+        state.bubbleHeroId === 'songjiang' &&
+        state.bubbleDebug &&
+        state.bubbleDebug.text === wrappedBubbleText,
+      Math.max(args.timeoutMs, 5000)
+    );
+    assertBubbleReadabilityPreset(wrappedBubbleState, 'wrapped_debug_bubble');
+    assertBubbleContainsText(wrappedBubbleState, 'wrapped_debug_bubble', 'attachments');
+    assertBubbleWrapsWithoutClipping(wrappedBubbleState, 'wrapped_debug_bubble');
+    checkpoints.push({ label: 'wrapped_debug_bubble', state: wrappedBubbleState });
+    await capture(page, args.screenshotDir, '03-wrapped-debug-bubble');
+
     const baselineCast = idleState.supportCastDebug || {};
 
     const seededEvent = await waitForState(
@@ -282,7 +368,7 @@ async function run() {
     );
     assertBubbleReadabilityPreset(seededEvent, 'seeded_songjiang_event');
     checkpoints.push({ label: 'seeded_songjiang_event', state: seededEvent });
-    await capture(page, args.screenshotDir, '02-seeded-songjiang-event');
+    await capture(page, args.screenshotDir, '04-seeded-songjiang-event');
 
     const roamingState = await waitForState(
       page,
@@ -294,23 +380,24 @@ async function run() {
       Math.max(args.timeoutMs, 15000)
     );
     checkpoints.push({ label: 'support_roaming', state: roamingState });
-    await capture(page, args.screenshotDir, '03-support-roaming');
+    await capture(page, args.screenshotDir, '05-support-roaming');
 
-    await postState(page, { state: 'writing', detail: '回歸測試：正在撰寫內容' });
+    await postState(page, { state: 'writing', detail: mixedWritingDetail });
     await refreshState(page);
     const writingHandoff = await waitForState(
       page,
       'writing transition acceptance',
       (state) => matchesTransitionAcceptance(state, {
         nextState: 'writing',
-        detail: '回歸測試：正在撰寫內容',
+        detail: mixedWritingDetail,
         heroId: 'wuyong',
         subscene: 'writing',
       }),
       Math.max(args.timeoutMs, 10000)
     );
+    assertBubbleReadabilityPreset(writingHandoff, 'writing_handoff_mixed_text');
     checkpoints.push({ label: 'writing_handoff', state: writingHandoff });
-    await capture(page, args.screenshotDir, '04-writing-handoff');
+    await capture(page, args.screenshotDir, '06-writing-handoff');
 
     const writingChild = await waitForState(
       page,
@@ -323,7 +410,7 @@ async function run() {
       Math.max(args.timeoutMs, 12000)
     );
     checkpoints.push({ label: 'writing_child', state: writingChild });
-    await capture(page, args.screenshotDir, '05-writing-child');
+    await capture(page, args.screenshotDir, '07-writing-child');
 
     await postState(page, { state: 'idle', detail: '回歸測試待命二' });
     await refreshState(page);
@@ -349,7 +436,7 @@ async function run() {
     assertBubbleReadabilityPreset(idleInterruptEvent, 'idle_interrupt_source');
     checkpoints.push({ label: 'idle_interrupt_source', state: idleInterruptEvent });
     const interruptedHeroId = idleInterruptEvent.bubbleHeroId;
-    await capture(page, args.screenshotDir, '06-idle-random-event');
+    await capture(page, args.screenshotDir, '08-idle-random-event');
 
     await postState(page, { state: 'executing', detail: '回歸測試：正在執行命令' });
     await refreshState(page);
@@ -366,7 +453,7 @@ async function run() {
       Math.max(args.timeoutMs, 10000)
     );
     checkpoints.push({ label: 'executing_handoff_interrupt', state: executingHandoff });
-    await capture(page, args.screenshotDir, '07-executing-handoff');
+    await capture(page, args.screenshotDir, '09-executing-handoff');
 
     const executingChild = await waitForState(
       page,
@@ -379,7 +466,7 @@ async function run() {
       Math.max(args.timeoutMs, 12000)
     );
     checkpoints.push({ label: 'executing_child', state: executingChild });
-    await capture(page, args.screenshotDir, '08-executing-child');
+    await capture(page, args.screenshotDir, '10-executing-child');
 
     await postState(page, { state: 'idle', detail: '回歸測試完成' });
     await refreshState(page);
@@ -390,7 +477,7 @@ async function run() {
       Math.max(args.timeoutMs, 10000)
     );
     checkpoints.push({ label: 'final_idle', state: finalIdle });
-    await capture(page, args.screenshotDir, '09-final-idle');
+    await capture(page, args.screenshotDir, '11-final-idle');
 
     const output = {
       ok: true,
