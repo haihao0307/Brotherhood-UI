@@ -291,6 +291,19 @@ function assertBubbleContainsText(state, label, expectedFragment) {
   }
 }
 
+function assertDomBubbleMode(state, label) {
+  const bubble = state && state.bubbleDebug ? state.bubbleDebug : null;
+  if (!bubble || bubble.renderMode !== 'dom') {
+    throw new Error(`${label}: expected DOM bubble mode`);
+  }
+  if (!bubble.domVisible) {
+    throw new Error(`${label}: expected visible DOM bubble node`);
+  }
+  if (typeof bubble.anchorX !== 'number' || typeof bubble.anchorY !== 'number') {
+    throw new Error(`${label}: missing DOM bubble anchor coordinates`);
+  }
+}
+
 function assertBubbleWrapsWithoutClipping(state, label) {
   assertBubbleDebugLayout(state, label);
   if (state.bubbleDebug.lineCount < 2) {
@@ -298,6 +311,12 @@ function assertBubbleWrapsWithoutClipping(state, label) {
   }
   if (!state.bubbleDebug.textFits) {
     throw new Error(`${label}: bubble text clips or overflows its container`);
+  }
+  if (typeof state.bubbleDebug.domLeft !== 'number' || typeof state.bubbleDebug.domTop !== 'number') {
+    throw new Error(`${label}: missing DOM overlay position`);
+  }
+  if (typeof state.bubbleDebug.domWidth !== 'number' || typeof state.bubbleDebug.domHeight !== 'number') {
+    throw new Error(`${label}: missing DOM overlay size`);
   }
 }
 
@@ -340,6 +359,7 @@ async function run() {
       Math.max(args.timeoutMs, 5000)
     );
     assertBubbleReadabilityPreset(mixedBubbleState, 'mixed_language_bubble', browserPlatformPreset);
+    assertDomBubbleMode(mixedBubbleState, 'mixed_language_bubble');
     assertBubbleContainsText(mixedBubbleState, 'mixed_language_bubble', 'review package is ready');
     checkpoints.push({ label: 'mixed_language_bubble', state: mixedBubbleState });
     await capture(page, args.screenshotDir, '02-mixed-language-bubble');
@@ -356,6 +376,7 @@ async function run() {
       Math.max(args.timeoutMs, 5000)
     );
     assertBubbleReadabilityPreset(wrappedBubbleState, 'wrapped_debug_bubble', browserPlatformPreset);
+    assertDomBubbleMode(wrappedBubbleState, 'wrapped_debug_bubble');
     assertBubbleContainsText(wrappedBubbleState, 'wrapped_debug_bubble', 'attachments');
     assertBubbleWrapsWithoutClipping(wrappedBubbleState, 'wrapped_debug_bubble');
     checkpoints.push({ label: 'wrapped_debug_bubble', state: wrappedBubbleState });
@@ -403,6 +424,7 @@ async function run() {
       Math.max(args.timeoutMs, 10000)
     );
     assertBubbleReadabilityPreset(writingHandoff, 'writing_handoff_mixed_text', browserPlatformPreset);
+    assertDomBubbleMode(writingHandoff, 'writing_handoff_mixed_text');
     checkpoints.push({ label: 'writing_handoff', state: writingHandoff });
     await capture(page, args.screenshotDir, '06-writing-handoff');
 
