@@ -19,6 +19,7 @@ agents-state.json
 office-agent-state.json
 .runtime/
 .superpowers/
+.worktrees/
 # keep join-keys.json in repo for first-run demo
 *.log
 *.out
