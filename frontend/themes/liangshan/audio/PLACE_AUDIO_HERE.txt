@@ -1,22 +1,31 @@
-Put role-based state mp3 files here (exact naming):
+Put state-based theme mp3 files here (exact naming):
 
-- <role>_idle.mp3
-- <role>_writing.mp3
-- <role>_researching.mp3
-- <role>_executing.mp3
-- <role>_syncing.mp3
-- <role>_error.mp3
+- state_idle.mp3
+- state_writing.mp3
+- state_researching.mp3
+- state_executing.mp3
+- state_syncing.mp3
+- state_error.mp3
 
-Current default role in theme.json is:
-- songjiang
+Current theme convention:
+- filenames describe the active workflow state
+- they are shared by multiple heroes if you have not produced hero-specific audio yet
+- `theme.json` maps each hero/state to these state-based files explicitly
 
-So files should be:
-- songjiang_idle.mp3
-- songjiang_writing.mp3
-- songjiang_researching.mp3
-- songjiang_executing.mp3
-- songjiang_syncing.mp3
-- songjiang_error.mp3
+Current theme audio pattern:
+- `/static/themes/liangshan/audio/state_{state}.mp3`
+
+Fixed workflow after replacing audio:
+
+1. Overwrite the file with the same name
+2. Run: `python asset_delivery_doctor.py`
+3. Open `docs/asset-status.md` and confirm the audio row is present.
+4. Run: `python docs_consistency_doctor.py`
+5. Run: `python check_theme_consistency.py`
+
+Notes:
+- Audio replacement usually does not require a theme sync if the file path stays the same.
+- The old `songjiang_*.mp3` naming is obsolete in this project.
 
 Tip:
 - Keep each clip short and loop-friendly.

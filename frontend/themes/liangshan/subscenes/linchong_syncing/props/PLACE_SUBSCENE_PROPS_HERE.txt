@@ -1,0 +1,1 @@
+Place Lin Chong syncing-scene props in this folder.

@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-24T00:00:00+08:00",
+  "workflow": {
+    "generateDocsCommand": "python generate_asset_docs.py",
+    "doctorCommand": "python asset_delivery_doctor.py",
+    "docsConsistencyCommand": "python docs_consistency_doctor.py",
+    "consistencyCommand": "python check_theme_consistency.py",
+    "regressionCommand": "python brotherhood_control_runtime.py regression",
+    "acceptanceCommand": "python asset_acceptance_check.py",
+    "statusReportPath": "docs/asset-status.md",
+    "acceptanceMarkdownReportPath": "docs/asset-acceptance-report.md",
+    "acceptanceJsonReportPath": "docs/asset-acceptance-report.json"
+  },
+  "placeholderAssets": [
+    {
+      "id": "wuyong_idle",
+      "path": "frontend/themes/liangshan/wuyong_idle-spritesheet.png",
+      "category": "hero_idle",
+      "scene": "main",
+      "heroId": "wuyong",
+      "description": "吳用主場景 idle 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "4feb67bc0694e445706d4b706b462b882580cb1dcf098c1563cf4ed91646b2f3"
+    },
+    {
+      "id": "wuyong_walking",
+      "path": "frontend/themes/liangshan/wuyong_walking-spritesheet.png",
+      "category": "hero_walking",
+      "scene": "main",
+      "heroId": "wuyong",
+      "description": "吳用主場景 walking 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "257ae5954ecec1d912b0f9b1a151c65d50eb917f359960c1a889c89edccd6568"
+    },
+    {
+      "id": "sunerniang_idle",
+      "path": "frontend/themes/liangshan/sunerniang_idle-spritesheet.png",
+      "category": "hero_idle",
+      "scene": "main",
+      "heroId": "sunerniang",
+      "description": "孫二娘主場景 idle 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "2c839d5a2e677c6fc76c7a33634247541d37dfb53b10c81bb10500bdacea2488"
+    },
+    {
+      "id": "sunerniang_walking",
+      "path": "frontend/themes/liangshan/sunerniang_walking-spritesheet.png",
+      "category": "hero_walking",
+      "scene": "main",
+      "heroId": "sunerniang",
+      "description": "孫二娘主場景 walking 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "d75a21b1b703905cad60b912a102b83bea0e5103b894d1eca4eb7ec0d21a64d6"
+    },
+    {
+      "id": "wusong_idle",
+      "path": "frontend/themes/liangshan/wusong_idle-spritesheet.png",
+      "category": "hero_idle",
+      "scene": "main",
+      "heroId": "wusong",
+      "description": "武松主場景 idle 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "557838cfc12c6179d8fd4a7e32472049e25ca908a5e3e45306fc3826d6f00c24"
+    },
+    {
+      "id": "wusong_walking",
+      "path": "frontend/themes/liangshan/wusong_walking-spritesheet.png",
+      "category": "hero_walking",
+      "scene": "main",
+      "heroId": "wusong",
+      "description": "武松主場景 walking 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "5b35526a011c976d775061ba155e9012e2ccc09f9e23a0ce384ccb61e3c1e279"
+    },
+    {
+      "id": "linchong_idle",
+      "path": "frontend/themes/liangshan/linchong_idle-spritesheet.png",
+      "category": "hero_idle",
+      "scene": "main",
+      "heroId": "linchong",
+      "description": "林沖主場景 idle 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "3f927f4fcbbdf20d65cfb5549fe9344fe6361ca91fee3d8ec2763e2a8827a206"
+    },
+    {
+      "id": "linchong_walking",
+      "path": "frontend/themes/liangshan/linchong_walking-spritesheet.png",
+      "category": "hero_walking",
+      "scene": "main",
+      "heroId": "linchong",
+      "description": "林沖主場景 walking 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "6e7baa95daff211adc12b9379a89b6392474d78db9fbf41fa4c7ed81143f61fb"
+    },
+    {
+      "id": "luzhishen_idle",
+      "path": "frontend/themes/liangshan/luzhishen_idle-spritesheet.png",
+      "category": "hero_idle",
+      "scene": "main",
+      "heroId": "luzhishen",
+      "description": "魯智深主場景 idle 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "e0fd36c77887a19caf3a6a39a260add2b3d0474e7b992760f0125bd347a579be"
+    },
+    {
+      "id": "luzhishen_walking",
+      "path": "frontend/themes/liangshan/luzhishen_walking-spritesheet.png",
+      "category": "hero_walking",
+      "scene": "main",
+      "heroId": "luzhishen",
+      "description": "魯智深主場景 walking 占位動畫",
+      "requiresThemeSync": true,
+      "placeholderSha256": "46ccf904671a35786465067e8f00711106381660d8f9365c96a94787e6d367fe"
+    },
+    {
+      "id": "sunerniang_researching_bg",
+      "path": "frontend/themes/liangshan/subscenes/sunerniang_researching/bg.png",
+      "category": "subscene_bg",
+      "scene": "researching",
+      "heroId": "sunerniang",
+      "description": "孫二娘 researching 子場景背景占位圖",
+      "requiresThemeSync": false,
+      "placeholderSha256": "f630bb282b17af46b390d3568eb79c37082c92c3ce56b77bb589bdc49ff17a04"
+    },
+    {
+      "id": "wuyong_writing_bg",
+      "path": "frontend/themes/liangshan/subscenes/wuyong_writing/bg.png",
+      "category": "subscene_bg",
+      "scene": "writing",
+      "heroId": "wuyong",
+      "description": "吳用 writing 子場景背景占位圖",
+      "requiresThemeSync": false,
+      "placeholderSha256": "5af4bd906869b861625e07cdd0a04b9a7560c4dca8fb5735a6e3964be366abea"
+    },
+    {
+      "id": "wusong_executing_bg",
+      "path": "frontend/themes/liangshan/subscenes/wusong_executing/bg.png",
+      "category": "subscene_bg",
+      "scene": "executing",
+      "heroId": "wusong",
+      "description": "武松 executing 子場景背景占位圖",
+      "requiresThemeSync": false,
+      "placeholderSha256": "d58791a21845ebaf65da0cd383457ce207b00b6faa79d2fda2ce6ac9d6ada717"
+    },
+    {
+      "id": "linchong_syncing_bg",
+      "path": "frontend/themes/liangshan/subscenes/linchong_syncing/bg.png",
+      "category": "subscene_bg",
+      "scene": "syncing",
+      "heroId": "linchong",
+      "description": "林沖 syncing 子場景背景占位圖",
+      "requiresThemeSync": false,
+      "placeholderSha256": "72a4e43c0b8356082d219276e9ace4d5eee8c7eeccb932f9ea1282e1fe2cedf9"
+    },
+    {
+      "id": "luzhishen_error_bg",
+      "path": "frontend/themes/liangshan/subscenes/luzhishen_error/bg.png",
+      "category": "subscene_bg",
+      "scene": "error",
+      "heroId": "luzhishen",
+      "description": "魯智深 error 子場景背景占位圖",
+      "requiresThemeSync": false,
+      "placeholderSha256": "f383e04f7362fc632292eed9d3b480de60f9ad5171c5ca24fb70860cbcfe79e8"
+    }
+  ],
+  "stateAudioFiles": [
+    "frontend/themes/liangshan/audio/state_idle.mp3",
+    "frontend/themes/liangshan/audio/state_writing.mp3",
+    "frontend/themes/liangshan/audio/state_researching.mp3",
+    "frontend/themes/liangshan/audio/state_executing.mp3",
+    "frontend/themes/liangshan/audio/state_syncing.mp3",
+    "frontend/themes/liangshan/audio/state_error.mp3"
+  ]
+}

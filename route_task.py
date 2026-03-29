@@ -10,12 +10,13 @@ import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
+
+from state_coordinator import read_state_snapshot, submit_snapshot_event
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 RULES_FILE = os.path.join(ROOT_DIR, "docs", "task-routing-rules.md")
-STATE_FILE = os.path.join(ROOT_DIR, "state.json")
 VALID_STATES = {"idle", "writing", "researching", "executing", "syncing", "error"}
 
 
@@ -49,7 +50,7 @@ def parse_rules(markdown_path: str) -> List[TaskRule]:
 
     rules: List[TaskRule] = []
     current_title: Optional[str] = None
-    current_data: dict = {}
+    current_data: dict[str, str] = {}
 
     def flush_rule() -> None:
         nonlocal current_title, current_data
@@ -73,14 +74,16 @@ def parse_rules(markdown_path: str) -> List[TaskRule]:
         if not keywords:
             raise ValueError(f"missing keywords in rule '{current_title}'")
 
-        rules.append(TaskRule(
-            title=current_title.strip(),
-            hero=hero,
-            state=state,
-            detail=detail,
-            keywords=keywords,
-            priority=priority
-        ))
+        rules.append(
+            TaskRule(
+                title=current_title.strip(),
+                hero=hero,
+                state=state,
+                detail=detail,
+                keywords=keywords,
+                priority=priority,
+            )
+        )
         current_title = None
         current_data = {}
 
@@ -103,7 +106,6 @@ def parse_rules(markdown_path: str) -> List[TaskRule]:
 
 
 def filter_overlapping_keywords(matched: List[str]) -> List[str]:
-    """Prefer longer matched phrases so nested short keywords do not score twice."""
     kept: List[str] = []
     for keyword in sorted(matched, key=len, reverse=True):
         if any(keyword in existing for existing in kept):
@@ -112,7 +114,7 @@ def filter_overlapping_keywords(matched: List[str]) -> List[str]:
     return sorted(kept, key=lambda item: (-len(item), item))
 
 
-def pick_rule(task_text: str, rules: List[TaskRule]) -> Optional[dict]:
+def pick_rule(task_text: str, rules: List[TaskRule]) -> Optional[dict[str, Any]]:
     normalized = normalize_text(task_text)
     if not normalized:
         return None
@@ -127,31 +129,38 @@ def pick_rule(task_text: str, rules: List[TaskRule]) -> Optional[dict]:
         candidate = {
             "rule": rule,
             "matched_keywords": matched,
-            "score": score
+            "score": score,
         }
         if best is None or candidate["score"] > best["score"]:
             best = candidate
     return best
 
 
-def load_state() -> dict:
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "state": "idle",
-        "detail": "待命中",
-        "updated_at": datetime.now().isoformat()
-    }
+def load_state() -> dict[str, Any]:
+    return read_state_snapshot()
 
 
-def save_state(payload: dict) -> None:
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-        f.write("\n")
+def save_state(
+    payload: dict[str, Any],
+    *,
+    source: str = "route_task",
+    event_type: str = "route_apply",
+    request_id: str | None = None,
+    sequence: int | None = None,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    _, snapshot = submit_snapshot_event(
+        payload,
+        source=source,
+        event_type=event_type,
+        request_id=request_id,
+        sequence=sequence,
+        reason=reason,
+    )
+    return snapshot
 
 
-def build_state_payload(match: dict, task_text: str) -> dict:
+def build_state_payload(match: dict[str, Any], task_text: str) -> dict[str, Any]:
     rule: TaskRule = match["rule"]
     payload = load_state()
     payload["state"] = rule.state
@@ -176,17 +185,17 @@ def main() -> int:
     rules = parse_rules(args.rules)
     match = pick_rule(args.task, rules)
     if not match:
-      result = {
-          "ok": False,
-          "msg": "No matching rule found.",
-          "task": args.task,
-          "rules_file": args.rules
-      }
-      if args.json:
-          print(json.dumps(result, ensure_ascii=False, indent=2))
-      else:
-          print("未匹配到任务规则，请补充 docs/task-routing-rules.md")
-      return 1
+        result = {
+            "ok": False,
+            "msg": "No matching rule found.",
+            "task": args.task,
+            "rules_file": args.rules,
+        }
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print("未匹配到任务规则，请补充 docs/task-routing-rules.md")
+        return 1
 
     payload = build_state_payload(match, args.task)
     result = {
@@ -198,11 +207,13 @@ def main() -> int:
         "routing_rule": payload["routing_rule"],
         "matched_keywords": payload["routing_keywords"],
         "rules_file": args.rules,
-        "applied": bool(args.apply)
+        "applied": bool(args.apply),
     }
 
     if args.apply:
-        save_state(payload)
+        snapshot = save_state(payload, reason="task_started")
+        result["request_id"] = snapshot.get("request_id")
+        result["sequence"] = snapshot.get("sequence")
 
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -213,7 +224,7 @@ def main() -> int:
         print(f"说明: {result['detail']}")
         print(f"关键词: {', '.join(result['matched_keywords'])}")
         if args.apply:
-            print("已写入 state.json")
+            print("已写入状态总线")
 
     return 0
 
