@@ -2,19 +2,13 @@
   'use strict';
 
   const STATES = [
-    { key: 'idle', cls: 'primary' },
-    { key: 'writing', cls: '' },
-    { key: 'researching', cls: '' },
-    { key: 'executing', cls: '' },
-    { key: 'syncing', cls: '' },
-    { key: 'error', cls: 'danger' }
+    { key: 'idle', label: '待命', cls: 'primary' },
+    { key: 'writing', label: '写作', cls: '' },
+    { key: 'researching', label: '研究', cls: '' },
+    { key: 'executing', label: '执行', cls: '' },
+    { key: 'syncing', label: '同步', cls: '' },
+    { key: 'error', label: '出错', cls: 'danger' }
   ];
-
-  function t(key, params, fallback) {
-    const i18n = window.BrotherhoodI18n;
-    if (i18n && typeof i18n.t === 'function') return i18n.t(key, params);
-    return fallback != null ? fallback : key;
-  }
 
   function postJSON(url, body) {
     return fetch(url, {
@@ -32,32 +26,25 @@
     const buttons = document.getElementById('stateButtons');
     if (!detailInput || !buttons) return;
 
-    function renderButtons() {
-      buttons.innerHTML = '';
-      for (const s of STATES) {
-        const btn = document.createElement('button');
-        btn.className = 'btn ' + (s.cls || '');
-        btn.textContent = t('state.labels.' + s.key);
-        btn.addEventListener('click', async () => {
-          const detail = (detailInput.value || '').trim();
-          try {
-            await postJSON('/set_state', { state: s.key, detail });
-            if (appApi && typeof appApi.fetchStatusNow === 'function') appApi.fetchStatusNow();
-          } catch (e) {
-            alert(t('control.requestError'));
-          }
-        });
-        buttons.appendChild(btn);
-      }
-    }
-
-    renderButtons();
-    const i18n = window.BrotherhoodI18n;
-    if (i18n && typeof i18n.subscribe === 'function') {
-      i18n.subscribe(renderButtons);
+    buttons.innerHTML = '';
+    for (const s of STATES) {
+      const btn = document.createElement('button');
+      btn.className = 'btn ' + (s.cls || '');
+      btn.textContent = s.label;
+      btn.addEventListener('click', async () => {
+        const detail = (detailInput.value || '').trim();
+        try {
+          await postJSON('/set_state', { state: s.key, detail });
+          if (appApi && typeof appApi.fetchStatusNow === 'function') appApi.fetchStatusNow();
+        } catch (e) {
+          alert('请求失败：请确认后端已启动。');
+        }
+      });
+      buttons.appendChild(btn);
     }
   }
 
   window.StarOfficePanels = window.StarOfficePanels || {};
   window.StarOfficePanels.initControlPanel = initControlPanel;
 })();
+

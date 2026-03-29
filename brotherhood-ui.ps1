@@ -20,20 +20,6 @@ $WatcherPidFile = Join-Path $RuntimeDir "watcher.pid"
 $SyncStatusFile = Join-Path $RuntimeDir "openclaw-sync-status.json"
 
 function Get-PythonCommand {
-    foreach ($venvName in @(".venv", "venv", "env")) {
-        $repoPython = Join-Path $RepoRoot "$venvName\Scripts\python.exe"
-        if (Test-Path $repoPython) {
-            return @($repoPython)
-        }
-    }
-
-    if ($env:VIRTUAL_ENV) {
-        $activeVenvPython = Join-Path $env:VIRTUAL_ENV "Scripts\python.exe"
-        if (Test-Path $activeVenvPython) {
-            return @($activeVenvPython)
-        }
-    }
-
     $py = Get-Command py -ErrorAction SilentlyContinue
     if ($py) {
         return @($py.Source, "-3")
@@ -221,46 +207,6 @@ function Resolve-BoardUrl {
     return $bestFallback
 }
 
-function Resolve-LocalBoardUrl {
-    param(
-        [int]$WaitSeconds = 0
-    )
-
-    $candidates = Get-BoardUrlCandidates
-    if (-not $candidates -or $candidates.Count -eq 0) {
-        return ("http://127.0.0.1:{0}" -f $BoardPort)
-    }
-
-    $preferredUrl = $candidates[0]
-    $fallbackUrl = if ($candidates.Count -gt 1) { $candidates[1] } else { $preferredUrl }
-    $deadline = (Get-Date).AddSeconds($WaitSeconds)
-
-    do {
-        if (Test-BoardUrl -Url $preferredUrl) {
-            return $preferredUrl
-        }
-
-        $healthyFallback = $null
-        if ($candidates.Count -gt 1) {
-            foreach ($url in $candidates[1..($candidates.Count - 1)]) {
-                if (Test-BoardUrl -Url $url) {
-                    $healthyFallback = $url
-                    break
-                }
-            }
-        }
-
-        if ((Get-Date) -ge $deadline) {
-            if ($healthyFallback) {
-                return $healthyFallback
-            }
-            return $fallbackUrl
-        }
-
-        Start-Sleep -Milliseconds 500
-    } while ($true)
-}
-
 function Show-Usage {
     @"
 Brotherhood-UI Windows helper
@@ -322,7 +268,7 @@ function Start-BackendWindow {
 
     $proc = Start-Process powershell -ArgumentList $argList -PassThru
     Write-PidFile -Path $BackendPidFile -Pid $proc.Id
-    $preferredUrl = Resolve-LocalBoardUrl -WaitSeconds 6
+    $preferredUrl = Resolve-BoardUrl -WaitSeconds 6
     Write-Host "Backend started in a new window."
     Write-Host "Board URL: $preferredUrl"
 }
@@ -396,7 +342,7 @@ switch ($Action.ToLowerInvariant()) {
         Start-Sleep -Seconds 2
         Start-OpenClawWatcherWindow
         Start-Sleep -Seconds 1
-        $preferredUrl = Resolve-LocalBoardUrl -WaitSeconds 6
+        $preferredUrl = Resolve-BoardUrl -WaitSeconds 6
         Start-Process $preferredUrl
         Write-Host "Opened browser: $preferredUrl"
         break
@@ -414,7 +360,7 @@ switch ($Action.ToLowerInvariant()) {
         break
     }
     "open" {
-        $preferredUrl = Resolve-LocalBoardUrl -WaitSeconds 6
+        $preferredUrl = Resolve-BoardUrl -WaitSeconds 6
         Start-Process $preferredUrl
         Write-Host "Opened browser: $preferredUrl"
         break

@@ -101,56 +101,6 @@ It maps:
 - assistant final text -> `done`
 - prompt/tool failure -> `fail`
 
-## Activity protocol
-
-The watcher now prefers an explicit activity protocol over tool-name guessing.
-
-Priority order:
-
-1. Explicit protocol payloads
-2. Explicit state hints inside tool arguments
-3. Configured tool-family fallback
-4. Observe-only note without changing UI state
-
-The protocol file is:
-
-- `openclaw-activity-protocol.json`
-
-It defines:
-
-- which tool families map to `researching / writing / executing / syncing`
-- which tools are observe-only
-- which keys are treated as explicit state hints
-- which custom event types can directly drive Brotherhood-UI
-
-### Preferred explicit protocol shapes
-
-Inside tool arguments or custom event payloads:
-
-```json
-{
-  "brotherhood": {
-    "command": "phase",
-    "state": "writing",
-    "note": "正在整理首頁 README"
-  }
-}
-```
-
-Or assistant text can embed:
-
-```text
-BROTHERHOOD_UI: {"command":"phase","state":"executing","note":"正在執行本地腳本"}
-```
-
-Supported commands:
-
-- `phase`
-- `done`
-- `fail`
-
-If an explicit protocol payload is present, the watcher uses it directly and stops relying on tool-name inference for that event.
-
 `AGENTS.md` is still kept in the repo as a secondary integration path, but the file watcher is the reliable path for your current local deployment.
 
 ## Phase routing behavior
@@ -166,15 +116,3 @@ If OpenClaw already knows the exact phase, it can use:
 ```powershell
 python openclaw_bridge.py phase "正在实现按钮交互" --state executing
 ```
-
-You can inspect the watcher mode with:
-
-```powershell
-python openclaw_sync_doctor.py
-```
-
-Look for:
-
-- `Protocol mode`
-- `Protocol command`
-- `Activity source`

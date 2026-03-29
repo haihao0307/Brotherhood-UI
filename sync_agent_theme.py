@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import re
 import sys
@@ -22,14 +21,6 @@ except Exception:  # pragma: no cover
 DEFAULT_FRAME_RATE = 6
 DEFAULT_THEME_JSON = Path("frontend/themes/liangshan/theme.json")
 MAX_TEXTURE_SIZE = 4096
-PROP_SCENE_SCOPES = [
-    ("main", "Main scene"),
-    ("researching", "Researching subscene"),
-    ("writing", "Writing subscene"),
-    ("executing", "Executing subscene"),
-    ("syncing", "Syncing subscene"),
-    ("error", "Error subscene"),
-]
 
 
 def natural_sort_key(value: str) -> List[object]:
@@ -611,221 +602,6 @@ def save_theme(theme_json_path: Path, theme: dict) -> None:
         f.write("\n")
 
 
-def strip_spritesheet_suffix(stem: str) -> str:
-    for suffix in ("-spritesheet", "_spritesheet", " spritesheet"):
-        if stem.endswith(suffix):
-            return stem[: -len(suffix)]
-    return stem
-
-
-def infer_prop_key(theme: dict, theme_json_path: Path, metadata: dict) -> str | None:
-    png_path = relative_static_path(Path(metadata["output"]), theme_json_path)
-    spritesheets = (((theme.get("assets") or {}).get("spritesheets")) or {})
-    for key, node in spritesheets.items():
-        if isinstance(node, dict) and node.get("png") == png_path:
-            return str(key)
-    return None
-
-
-def suggest_prop_key(metadata: dict) -> str:
-    stem = strip_spritesheet_suffix(Path(metadata["output"]).stem).strip().lower()
-    normalized = re.sub(r"[^a-z0-9]+", "_", stem).strip("_")
-    return normalized or "prop"
-
-
-def ensure_prop_spritesheet_asset(theme: dict, theme_json_path: Path, metadata: dict, prop_key: str) -> dict:
-    assets = theme.setdefault("assets", {})
-    spritesheets = assets.setdefault("spritesheets", {})
-    if not isinstance(spritesheets, dict):
-        raise ValueError("theme.assets.spritesheets is not an object")
-    node = {
-        "png": relative_static_path(Path(metadata["output"]), theme_json_path),
-        "frameWidth": int(metadata["frameWidth"]),
-        "frameHeight": int(metadata["frameHeight"]),
-        "frames": int(metadata["frames"]),
-        "frameRate": int(metadata["frameRate"]),
-    }
-    spritesheets[prop_key] = node
-    return node
-
-
-def collect_prop_instance_ids(base_object: dict) -> set[str]:
-    used: set[str] = set()
-    instance_id = base_object.get("instanceId")
-    if isinstance(instance_id, str) and instance_id.strip():
-        used.add(instance_id.strip())
-    duplicates = base_object.get("duplicates")
-    if isinstance(duplicates, list):
-        for duplicate in duplicates:
-            if not isinstance(duplicate, dict):
-                continue
-            duplicate_id = duplicate.get("instanceId")
-            if isinstance(duplicate_id, str) and duplicate_id.strip():
-                used.add(duplicate_id.strip())
-    return used
-
-
-def next_prop_instance_id(base_label: str, used_ids: set[str]) -> str:
-    index = 1
-    while True:
-        candidate = f"{base_label}_{index:02d}"
-        if candidate not in used_ids:
-            return candidate
-        index += 1
-
-
-def infer_prop_row_step(base_object: dict, metadata: dict) -> float:
-    base_x = base_object.get("x")
-    positions: List[float] = []
-    if isinstance(base_x, (int, float)):
-        positions.append(float(base_x))
-    duplicates = base_object.get("duplicates")
-    if isinstance(duplicates, list):
-        for duplicate in duplicates:
-            if not isinstance(duplicate, dict):
-                continue
-            duplicate_x = duplicate.get("x")
-            if isinstance(duplicate_x, (int, float)):
-                positions.append(float(duplicate_x))
-    positions = sorted(set(positions))
-    if len(positions) >= 2:
-        positive_steps = [positions[index + 1] - positions[index] for index in range(len(positions) - 1)]
-        positive_steps = [step for step in positive_steps if step > 0]
-        if positive_steps:
-            return float(positive_steps[-1])
-
-    frame_width = float(metadata.get("frameWidth") or 0)
-    scale = base_object.get("scale")
-    if isinstance(scale, (int, float)) and frame_width > 0:
-        return round(max(72.0, frame_width * float(scale) * 0.9), 3)
-    if frame_width > 0:
-        return round(max(72.0, frame_width * 0.35), 3)
-    return 120.0
-
-
-def get_prop_objects_container(theme: dict, scene_scope: str) -> list:
-    if scene_scope == "main":
-        return theme.setdefault("objects", [])
-    subscenes = theme.setdefault("subscenes", {})
-    subscene = subscenes.get(scene_scope)
-    if not isinstance(subscene, dict):
-        raise ValueError(f"Subscene not found in theme.json: {scene_scope}")
-    return subscene.setdefault("objects", [])
-
-
-def find_prop_object(objects: list, prop_key: str) -> dict | None:
-    return next(
-        (
-            obj
-            for obj in objects
-            if isinstance(obj, dict) and obj.get("key") == prop_key
-        ),
-        None,
-    )
-
-
-def default_prop_scale(metadata: dict) -> float:
-    frame_height = float(metadata.get("frameHeight") or 0)
-    if frame_height >= 512:
-        return 0.42
-    if frame_height >= 256:
-        return 0.35
-    return 0.5
-
-
-def build_default_prop_object(prop_key: str, instance_label: str, metadata: dict) -> dict:
-    return {
-        "type": "animated",
-        "key": prop_key,
-        "instanceId": f"{instance_label}_00",
-        "x": 640.0,
-        "y": 620.0,
-        "scale": default_prop_scale(metadata),
-        "origin": {"x": 0.5, "y": 1.0},
-        "depth": 1280,
-        "clickText": instance_label,
-    }
-
-
-def clone_prop_base_object(source: dict, instance_label: str) -> dict:
-    cloned = copy.deepcopy(source)
-    cloned["instanceId"] = f"{instance_label}_00"
-    cloned.pop("duplicates", None)
-    return cloned
-
-
-def sync_prop_object(
-    *,
-    theme_json_path: Path,
-    metadata: dict,
-    prop_key: str | None,
-    duplicate_count: int,
-    instance_label: str | None,
-    scene_scope: str = "main",
-) -> dict:
-    theme = load_theme(theme_json_path)
-    resolved_prop_key = prop_key or infer_prop_key(theme, theme_json_path, metadata) or suggest_prop_key(metadata)
-    asset_node = ensure_prop_spritesheet_asset(theme, theme_json_path, metadata, resolved_prop_key)
-
-    objects = get_prop_objects_container(theme, scene_scope)
-    if not isinstance(objects, list):
-        raise ValueError(f"Objects container for scene scope '{scene_scope}' is not a list")
-
-    label_base = (instance_label or strip_spritesheet_suffix(Path(metadata["output"]).stem)).strip()
-    if not label_base:
-        label_base = resolved_prop_key
-
-    base_object = find_prop_object(objects, resolved_prop_key)
-    if not base_object:
-        reference_object = find_prop_object(theme.setdefault("objects", []), resolved_prop_key)
-        if reference_object:
-            base_object = clone_prop_base_object(reference_object, label_base)
-        else:
-            base_object = build_default_prop_object(resolved_prop_key, label_base, metadata)
-        objects.append(base_object)
-
-    base_x = base_object.get("x")
-    base_y = base_object.get("y")
-    if not isinstance(base_x, (int, float)) or not isinstance(base_y, (int, float)):
-        raise ValueError(f"Base object for prop '{resolved_prop_key}' is missing numeric x/y coordinates")
-
-    if not isinstance(base_object.get("duplicates"), list):
-        base_object["duplicates"] = []
-
-    used_ids = collect_prop_instance_ids(base_object)
-    total_duplicates = max(1, int(duplicate_count))
-    row_step = infer_prop_row_step(base_object, metadata)
-    existing_xs = [float(base_x)]
-    for duplicate in base_object["duplicates"]:
-        if isinstance(duplicate, dict) and isinstance(duplicate.get("x"), (int, float)):
-            existing_xs.append(float(duplicate["x"]))
-    anchor_x = max(existing_xs)
-
-    created_nodes = []
-    for index in range(total_duplicates):
-        new_instance_id = next_prop_instance_id(label_base, used_ids)
-        used_ids.add(new_instance_id)
-        duplicate_node = {
-            "instanceId": new_instance_id,
-            "x": round(anchor_x + row_step * (index + 1), 3),
-            "y": float(base_y),
-        }
-        base_object["duplicates"].append(duplicate_node)
-        created_nodes.append(duplicate_node)
-    save_theme(theme_json_path, theme)
-    return {
-        "themeJson": str(theme_json_path.resolve()),
-        "targetKind": "prop",
-        "sceneScope": scene_scope,
-        "propKey": resolved_prop_key,
-        "assetNode": asset_node,
-        "baseInstanceId": base_object.get("instanceId"),
-        "instanceIds": [node["instanceId"] for node in created_nodes],
-        "duplicateNodes": created_nodes,
-        "rowStep": row_step,
-    }
-
-
 def _rendered_height(asset: dict | None) -> float | None:
     if not isinstance(asset, dict):
         return None
@@ -1061,30 +837,19 @@ def run_cli(args: argparse.Namespace) -> int:
 
     sync_result = None
     if args.sync:
-        if args.target_kind == "prop":
-            theme_json_path = Path(args.theme_json or DEFAULT_THEME_JSON)
-            sync_result = sync_prop_object(
-                theme_json_path=theme_json_path,
-                metadata=metadata,
-                prop_key=args.prop_key,
-                duplicate_count=int(args.duplicate_count),
-                instance_label=args.instance_label,
-                scene_scope=args.scene_scope,
-            )
-        else:
-            if not args.state_key:
-                raise ValueError("--state-key is required when using --sync")
-            if args.target_kind == "support" and not args.hero_id:
-                raise ValueError("--hero-id is required when target-kind is support")
-            theme_json_path = Path(args.theme_json or DEFAULT_THEME_JSON)
-            sync_result = sync_theme_json(
-                theme_json_path=theme_json_path,
-                metadata=metadata,
-                target_kind=args.target_kind,
-                state_key=args.state_key,
-                hero_id=args.hero_id,
-                override_scale=args.scale,
-            )
+        if not args.state_key:
+            raise ValueError("--state-key is required when using --sync")
+        if args.target_kind == "support" and not args.hero_id:
+            raise ValueError("--hero-id is required when target-kind is support")
+        theme_json_path = Path(args.theme_json or DEFAULT_THEME_JSON)
+        sync_result = sync_theme_json(
+            theme_json_path=theme_json_path,
+            metadata=metadata,
+            target_kind=args.target_kind,
+            state_key=args.state_key,
+            hero_id=args.hero_id,
+            override_scale=args.scale,
+        )
 
     result = {
         "metadata": metadata,
@@ -1124,10 +889,6 @@ def launch_gui() -> int:
     hero_id_var = tk.StringVar(value="")
     state_key_var = tk.StringVar(value="")
     scale_var = tk.StringVar(value="")
-    prop_key_var = tk.StringVar(value="")
-    duplicate_count_var = tk.StringVar(value="1")
-    instance_label_var = tk.StringVar(value="")
-    scene_scope_var = tk.StringVar(value="main")
 
     status_var = tk.StringVar(value="Select a source, then build and optionally sync theme.json.")
 
@@ -1137,38 +898,6 @@ def launch_gui() -> int:
         log_box.insert("end", message + "\n")
         log_box.see("end")
         log_box.configure(state="disabled")
-
-    def sync_target_is_prop() -> bool:
-        return target_kind_var.get() == "prop"
-
-    def update_sync_target_ui() -> None:
-        is_prop = sync_target_is_prop()
-        hero_id_entry.configure(state="disabled" if is_prop else "normal")
-        state_key_entry.configure(state="disabled" if is_prop else "normal")
-        scale_entry.configure(state="disabled" if is_prop else "normal")
-        prop_key_entry.configure(state="normal" if is_prop else "disabled")
-        duplicate_count_entry.configure(state="normal" if is_prop else "disabled")
-        instance_label_entry.configure(state="normal" if is_prop else "disabled")
-        scene_scope_combo.configure(state="readonly" if is_prop else "disabled")
-
-    def autofill_prop_sync_fields(info: dict | None = None) -> None:
-        if not sync_enabled_var.get() or not sync_target_is_prop():
-            return
-        source_text = source_path_var.get().strip()
-        theme_text = theme_json_var.get().strip()
-        if not source_text or not theme_text:
-            return
-        try:
-            theme = load_theme(Path(theme_text))
-            metadata_stub = {
-                "output": str(Path(source_text).resolve()),
-            }
-            inferred_key = infer_prop_key(theme, Path(theme_text), metadata_stub)
-            prop_key_var.set(inferred_key or suggest_prop_key(metadata_stub))
-            if not instance_label_var.get().strip():
-                instance_label_var.set(strip_spritesheet_suffix(Path(source_text).stem))
-        except Exception:
-            pass
 
     def set_mode(mode: str) -> None:
         source_mode.set(mode)
@@ -1263,7 +992,6 @@ def launch_gui() -> int:
             frame_count_var.set(str(info["frames"]))
             frame_width_var.set(str(info["frameWidth"]))
             frame_height_var.set(str(info["frameHeight"]))
-        autofill_prop_sync_fields(info)
         log(f"Loaded source: {source_text}")
 
     def build_or_sync_now() -> None:
@@ -1314,24 +1042,14 @@ def launch_gui() -> int:
         sync_result = None
         if sync_enabled_var.get():
             try:
-                if sync_target_is_prop():
-                    sync_result = sync_prop_object(
-                        theme_json_path=Path(theme_json_var.get().strip() or DEFAULT_THEME_JSON),
-                        metadata=metadata,
-                        prop_key=prop_key_var.get().strip() or None,
-                        duplicate_count=int(duplicate_count_var.get().strip() or "1"),
-                        instance_label=instance_label_var.get().strip() or None,
-                        scene_scope=scene_scope_var.get().strip() or "main",
-                    )
-                else:
-                    sync_result = sync_theme_json(
-                        theme_json_path=Path(theme_json_var.get().strip() or DEFAULT_THEME_JSON),
-                        metadata=metadata,
-                        target_kind=target_kind_var.get(),
-                        state_key=state_key_var.get().strip(),
-                        hero_id=hero_id_var.get().strip() or None,
-                        override_scale=float(scale_var.get().strip()) if scale_var.get().strip() else None,
-                    )
+                sync_result = sync_theme_json(
+                    theme_json_path=Path(theme_json_var.get().strip() or DEFAULT_THEME_JSON),
+                    metadata=metadata,
+                    target_kind=target_kind_var.get(),
+                    state_key=state_key_var.get().strip(),
+                    hero_id=hero_id_var.get().strip() or None,
+                    override_scale=float(scale_var.get().strip()) if scale_var.get().strip() else None,
+                )
             except Exception as exc:
                 messagebox.showerror("Theme sync failed", str(exc))
                 log(f"Theme sync failed: {exc}")
@@ -1343,10 +1061,7 @@ def launch_gui() -> int:
         for warning in warnings:
             log(f"WARNING: {warning}")
         if sync_result:
-            if sync_result.get("targetKind") == "prop":
-                log(f"Theme synced: prop / {sync_result['sceneScope']} / {sync_result['propKey']} / {', '.join(sync_result['instanceIds'])}")
-            else:
-                log(f"Theme synced: {sync_result['targetKind']} / {sync_result['heroId'] or 'main'} / {sync_result['stateKey']}")
+            log(f"Theme synced: {sync_result['targetKind']} / {sync_result['heroId'] or 'main'} / {sync_result['stateKey']}")
 
         summary_lines = [
             f"Output: {metadata['output']}",
@@ -1355,12 +1070,7 @@ def launch_gui() -> int:
             f"Frame rate: {metadata['frameRate']}",
         ]
         if sync_result:
-            if sync_result.get("targetKind") == "prop":
-                summary_lines.append(f"Scene scope: {sync_result['sceneScope']}")
-                summary_lines.append(f"Base object: {sync_result['baseInstanceId']}")
-                summary_lines.append(f"Prop duplicates added: {', '.join(sync_result['instanceIds'])}")
-            else:
-                summary_lines.append(f"Theme synced: {sync_result['stateKey']}")
+            summary_lines.append(f"Theme synced: {sync_result['stateKey']}")
         if warnings:
             summary_lines.append("")
             summary_lines.extend([f"Warning: {warning}" for warning in warnings])
@@ -1435,42 +1145,17 @@ def launch_gui() -> int:
     ttk.Label(sync_box, text="Target").grid(row=2, column=0, sticky="w", pady=(8, 0))
     target_row = ttk.Frame(sync_box)
     target_row.grid(row=2, column=1, sticky="w", pady=(8, 0))
-    ttk.Radiobutton(target_row, text="Main hero", value="main", variable=target_kind_var, command=update_sync_target_ui).pack(side="left")
-    ttk.Radiobutton(target_row, text="Support hero", value="support", variable=target_kind_var, command=update_sync_target_ui).pack(side="left", padx=(10, 0))
-    ttk.Radiobutton(target_row, text="Prop object", value="prop", variable=target_kind_var, command=update_sync_target_ui).pack(side="left", padx=(10, 0))
+    ttk.Radiobutton(target_row, text="Main hero", value="main", variable=target_kind_var).pack(side="left")
+    ttk.Radiobutton(target_row, text="Support hero", value="support", variable=target_kind_var).pack(side="left", padx=(10, 0))
 
     ttk.Label(sync_box, text="Hero ID").grid(row=3, column=0, sticky="w", pady=(8, 0))
-    hero_id_entry = ttk.Entry(sync_box, textvariable=hero_id_var)
-    hero_id_entry.grid(row=3, column=1, sticky="ew", pady=(8, 0))
+    ttk.Entry(sync_box, textvariable=hero_id_var).grid(row=3, column=1, sticky="ew", pady=(8, 0))
 
     ttk.Label(sync_box, text="State key").grid(row=4, column=0, sticky="w", pady=(8, 0))
-    state_key_entry = ttk.Entry(sync_box, textvariable=state_key_var)
-    state_key_entry.grid(row=4, column=1, sticky="ew", pady=(8, 0))
+    ttk.Entry(sync_box, textvariable=state_key_var).grid(row=4, column=1, sticky="ew", pady=(8, 0))
 
     ttk.Label(sync_box, text="Scale override (optional)").grid(row=5, column=0, sticky="w", pady=(8, 0))
-    scale_entry = ttk.Entry(sync_box, textvariable=scale_var)
-    scale_entry.grid(row=5, column=1, sticky="ew", pady=(8, 0))
-
-    ttk.Label(sync_box, text="Prop key").grid(row=6, column=0, sticky="w", pady=(8, 0))
-    prop_key_entry = ttk.Entry(sync_box, textvariable=prop_key_var)
-    prop_key_entry.grid(row=6, column=1, sticky="ew", pady=(8, 0))
-
-    ttk.Label(sync_box, text="Duplicate count").grid(row=7, column=0, sticky="w", pady=(8, 0))
-    duplicate_count_entry = ttk.Entry(sync_box, textvariable=duplicate_count_var)
-    duplicate_count_entry.grid(row=7, column=1, sticky="ew", pady=(8, 0))
-
-    ttk.Label(sync_box, text="Instance label").grid(row=8, column=0, sticky="w", pady=(8, 0))
-    instance_label_entry = ttk.Entry(sync_box, textvariable=instance_label_var)
-    instance_label_entry.grid(row=8, column=1, sticky="ew", pady=(8, 0))
-
-    ttk.Label(sync_box, text="Scene scope").grid(row=9, column=0, sticky="w", pady=(8, 0))
-    scene_scope_combo = ttk.Combobox(
-        sync_box,
-        textvariable=scene_scope_var,
-        state="readonly",
-        values=[value for value, _ in PROP_SCENE_SCOPES],
-    )
-    scene_scope_combo.grid(row=9, column=1, sticky="ew", pady=(8, 0))
+    ttk.Entry(sync_box, textvariable=scale_var).grid(row=5, column=1, sticky="ew", pady=(8, 0))
 
     ttk.Button(frame, text="Build / Sync", command=build_or_sync_now).grid(row=7, column=1, sticky="e", pady=(14, 0))
 
@@ -1495,7 +1180,6 @@ def launch_gui() -> int:
     status_bar.grid(row=1, column=0, sticky="ew")
 
     set_mode("folder")
-    update_sync_target_ui()
     root.mainloop()
     return 0
 
@@ -1513,19 +1197,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-meta", action="store_true", help="Do not write <output>.meta.json in build modes.")
     parser.add_argument("--sync", action="store_true", help="Update theme.json after build or inspect.")
     parser.add_argument("--theme-json", help="Path to theme.json. Defaults to frontend/themes/liangshan/theme.json.")
-    parser.add_argument("--target-kind", choices=["main", "support", "prop"], default="support", help="Where to write the sync result.")
+    parser.add_argument("--target-kind", choices=["main", "support"], default="support", help="Where to write the state config.")
     parser.add_argument("--hero-id", help="Support hero id, e.g. wuyong or wusong.")
     parser.add_argument("--state-key", help="State key to update, e.g. writing / executing / error / idle_b.")
     parser.add_argument("--scale", type=float, help="Optional scale override. Defaults to keeping existing scale.")
-    parser.add_argument("--prop-key", help="Prop key to match in theme.assets.spritesheets when target-kind is prop.")
-    parser.add_argument("--duplicate-count", type=int, default=1, help="How many duplicate prop instances to append in a row.")
-    parser.add_argument("--instance-label", help="Readable prop instance prefix, e.g. 'Fire pit'.")
-    parser.add_argument(
-        "--scene-scope",
-        choices=[value for value, _ in PROP_SCENE_SCOPES],
-        default="main",
-        help="Which scene container to write prop objects into when target-kind is prop.",
-    )
     return parser
 
 

@@ -1,70 +1,40 @@
-Brotherhood-UI asset replacement guide
+Put your Liangshan assets here:
 
-This file is auto-generated from:
-- frontend/themes/liangshan/asset-manifest.json
+- bg.png            (recommended 1280x720 or any 16:9)
+- optional bg.webp
 
-Use this fixed workflow every time you replace art:
+- bg_fg.png         (transparent PNG; foreground occlusion layer)
 
-1. Overwrite the target file in-place with the same filename.
-2. Run: `python asset_delivery_doctor.py`
-3. Open `docs/asset-status.md` and read the generated status board.
-4. Run: `python docs_consistency_doctor.py`
-5. Run: `python check_theme_consistency.py`
-6. If you replaced a spritesheet and its frame size / frame count changed, sync `theme.json` again.
+- hero_walk.png     (1200x390, 4 frames horizontally; each frame 300x390; transparent)
+- optional hero_walk.webp
 
-Current scene layout
+Props spritesheets (placeholders exist; replace anytime):
 
-- Main scene props: `frontend/themes/liangshan/props/main/`
-- Main scene hero spritesheets: `frontend/themes/liangshan/`
-- Subscene backgrounds: `frontend/themes/liangshan/subscenes/<scene>/bg.png`
-- Subscene props: `frontend/themes/liangshan/subscenes/<scene>/props/`
-- State audio: `frontend/themes/liangshan/audio/`
+- props/lantern.png (horizontal frames, transparent)
+- props/water.png
+- props/flag.png
 
-Current placeholder files
+State audio (mp3):
 
-- `wuyong_idle-spritesheet.png`
-- `wuyong_walking-spritesheet.png`
-- `sunerniang_idle-spritesheet.png`
-- `sunerniang_walking-spritesheet.png`
-- `wusong_idle-spritesheet.png`
-- `wusong_walking-spritesheet.png`
-- `linchong_idle-spritesheet.png`
-- `linchong_walking-spritesheet.png`
-- `luzhishen_idle-spritesheet.png`
-- `luzhishen_walking-spritesheet.png`
-- `subscenes/sunerniang_researching/bg.png`
-- `subscenes/wuyong_writing/bg.png`
-- `subscenes/wusong_executing/bg.png`
-- `subscenes/linchong_syncing/bg.png`
-- `subscenes/luzhishen_error/bg.png`
+- audio/songjiang_idle.mp3
+- audio/songjiang_writing.mp3
+- audio/songjiang_researching.mp3
+- audio/songjiang_executing.mp3
+- audio/songjiang_syncing.mp3
+- audio/songjiang_error.mp3
 
-What can usually be replaced directly
+Generic agent GIF one-click sync:
 
-- Subscene `bg.png` files
-- Props under `props/main/`
-- Props under `subscenes/<scene>/props/`
+- Put GIFs in this folder and use pattern: <character>_<state>.gif
+- States: walking (movement), idle, writing, researching, executing, syncing, error
 
-What usually needs a theme sync review after replacement
+- GUI mode (recommended):
+  python sync_agent_theme.py
+  Then click-select each GIF and run.
+  Or directly double-click: launch_sync_agent_theme_gui.bat
 
-- Any `*_idle-spritesheet.png`
-- Any `*_walking-spritesheet.png`
-- Any support-hero working-state spritesheet
+- Auto-scan mode (example for Songjiang):
+  python sync_agent_theme.py --character songjiang --scan
 
-Audio naming
-
-- Do not use the old `songjiang_*.mp3` naming anymore.
-- Use the fixed state-based names described in:
-  `frontend/themes/liangshan/audio/PLACE_AUDIO_HERE.txt`
-
-Recommended sprite sync entrypoints
-
-- GUI: `launch_sync_agent_theme_gui.bat`
-- CLI: `python sync_agent_theme.py --gui`
-
-Recommended final checks before commit
-
-- `python generate_asset_docs.py`
-- `python asset_delivery_doctor.py`
-- `docs/asset-status.md`
-- `python docs_consistency_doctor.py`
-- `python check_theme_consistency.py`
+- Backward-compatible quick command:
+  python sync_songjiang_theme.py

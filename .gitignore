@@ -16,9 +16,7 @@ __MACOSX/
 # Runtime / local files
 state.json
 agents-state.json
-office-agent-state.json
 .runtime/
-.superpowers/
 # keep join-keys.json in repo for first-run demo
 *.log
 *.out
@@ -30,10 +28,6 @@ cloudflared.out
 healthcheck.log
 backend.log
 frontend/office_bg.png
-progress.md
-output/
 .worktrees/
-docs/asset-status.md
-docs/asset-acceptance-report.md
-docs/asset-acceptance-report.json
-frontend/fonts/*.zip
+progress.md
+output/web-game/
