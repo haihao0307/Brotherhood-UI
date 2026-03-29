@@ -465,6 +465,14 @@ def default_output_for_input(input_path: Path) -> Path:
     return input_path.with_name(f"{input_path.stem}-spritesheet.png")
 
 
+def resolve_output_path_for_source_selection(mode: str, selected_path: Path, current_output: str) -> str:
+    if mode == "folder":
+        return str(default_output_for_input(selected_path))
+    if mode != "spritesheet" and not current_output.strip():
+        return str(default_output_for_input(selected_path))
+    return current_output
+
+
 def default_meta_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}.meta.json")
 
@@ -1209,8 +1217,7 @@ def launch_gui() -> int:
         if not path:
             return
         source_path_var.set(path)
-        if mode != "spritesheet" and not output_path_var.get().strip():
-            output_path_var.set(str(default_output_for_input(Path(path))))
+        output_path_var.set(resolve_output_path_for_source_selection(mode, Path(path), output_path_var.get()))
         inspect_current_source()
 
     def choose_output() -> None:
