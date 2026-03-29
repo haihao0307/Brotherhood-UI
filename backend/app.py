@@ -6,15 +6,26 @@ from datetime import datetime, timedelta
 import json
 import os
 import re
+import sys
 import threading
+import time
 
 # Paths (project-relative, no hardcoded absolute paths)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+from state_coordinator import ensure_auto_idle, ensure_bootstrap_state, read_state_snapshot, submit_snapshot_event
+from state_event_bus import DEFAULT_STATE as EVENT_DEFAULT_STATE, load_event_records
+
 MEMORY_DIR = os.path.join(os.path.dirname(ROOT_DIR), "memory")
 FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
 STATE_FILE = os.path.join(ROOT_DIR, "state.json")
 AGENTS_STATE_FILE = os.path.join(ROOT_DIR, "agents-state.json")
 JOIN_KEYS_FILE = os.path.join(ROOT_DIR, "join-keys.json")
+WATCHER_STATUS_FILE = os.path.join(ROOT_DIR, ".runtime", "openclaw-sync-status.json")
+STATUS_FEED_HISTORY_LIMIT = 6
+BOARD_PORT = int(os.environ.get("BROTHERHOOD_UI_PORT", "18791"))
 
 
 def get_yesterday_date_str():
@@ -131,10 +142,170 @@ def extract_memo_from_file(file_path):
         print(f"提取 memo 失败: {e}")
         return "「昨日记录加载失败」\n\n「往者不可谏，来者犹可追。」"
 
+
+def locate_recent_memo_file():
+    """Locate yesterday's memo or the nearest previous dated memo file."""
+    yesterday_str = get_yesterday_date_str()
+    yesterday_file = os.path.join(MEMORY_DIR, f"{yesterday_str}.md")
+
+    if os.path.exists(yesterday_file):
+        return yesterday_file, yesterday_str
+
+    if not os.path.exists(MEMORY_DIR):
+        return None, yesterday_str
+
+    files = [
+        f for f in os.listdir(MEMORY_DIR)
+        if f.endswith(".md") and re.match(r"\d{4}-\d{2}-\d{2}\.md", f)
+    ]
+    if not files:
+        return None, yesterday_str
+
+    files.sort(reverse=True)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    for name in files:
+        if name != f"{today_str}.md":
+            return os.path.join(MEMORY_DIR, name), name.replace(".md", "")
+
+    return None, yesterday_str
+
+
+def summarize_memo_text(text: str, limit: int = 44):
+    """Build a concise single-line summary for collapsed memo headers."""
+    if not text:
+        return "暂无昨日小记"
+
+    lines = [line.strip() for line in str(text).splitlines() if line.strip()]
+    if not lines:
+        return "暂无昨日小记"
+
+    summary = lines[0].lstrip("· ").strip()
+    if len(summary) <= limit:
+        return summary
+    return summary[: limit - 1].rstrip() + "…"
+
+
+def read_watcher_status():
+    if not os.path.exists(WATCHER_STATUS_FILE):
+        return {
+            "status": "offline",
+            "protocolMode": None,
+            "lastObservedActivity": None,
+            "lastObservedToolName": None,
+            "lastBridgeCommand": None,
+            "heartbeatAt": None,
+        }
+
+    try:
+        with open(WATCHER_STATUS_FILE, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return {
+            "status": "error",
+            "protocolMode": None,
+            "lastObservedActivity": None,
+            "lastObservedToolName": None,
+            "lastBridgeCommand": None,
+            "heartbeatAt": None,
+        }
+
+    if not isinstance(payload, dict):
+        payload = {}
+
+    return {
+        "status": payload.get("status") or "unknown",
+        "protocolMode": payload.get("protocolMode"),
+        "lastObservedActivity": payload.get("lastObservedActivity"),
+        "lastObservedToolName": payload.get("lastObservedToolName"),
+        "lastBridgeCommand": payload.get("lastBridgeCommand"),
+        "heartbeatAt": payload.get("heartbeatAt"),
+    }
+
+
+def build_status_history(snapshot: dict, limit: int = STATUS_FEED_HISTORY_LIMIT):
+    records = load_event_records()
+    if not isinstance(records, list) or not records:
+        return []
+
+    current_request_id = snapshot.get("request_id")
+
+    def normalize_history_item(event: dict):
+        payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        request_id = event.get("request_id") or payload.get("request_id")
+        return {
+            "eventId": event.get("id"),
+            "eventType": event.get("event_type") or payload.get("event_type"),
+            "state": payload.get("state") or "idle",
+            "detail": payload.get("detail") or "",
+            "hero": payload.get("hero") or "",
+            "source": event.get("source") or payload.get("source") or "unknown",
+            "updatedAt": payload.get("updated_at") or event.get("created_at"),
+            "isCurrentRequest": bool(current_request_id and request_id == current_request_id),
+            "requestId": request_id,
+            "sequence": event.get("sequence") or payload.get("sequence") or 0,
+        }
+
+    newest_first = [normalize_history_item(event) for event in reversed(records) if isinstance(event, dict)]
+    current_items = [item for item in newest_first if item["isCurrentRequest"]]
+    fallback_items = [item for item in newest_first if not item["isCurrentRequest"]]
+
+    selected = []
+    seen = set()
+    for source in (current_items, fallback_items):
+        for item in source:
+            event_id = item.get("eventId")
+            if event_id in seen:
+                continue
+            seen.add(event_id)
+            selected.append(item)
+            if len(selected) >= limit:
+                return selected
+    return selected
+
+
+def build_status_feed_payload():
+    snapshot = load_state()
+    memo_file, memo_date = locate_recent_memo_file()
+    memo_text = ""
+    memo_summary = {
+        "date": memo_date,
+        "summary": "暂无昨日小记",
+        "hasMemo": False,
+    }
+
+    if memo_file and os.path.exists(memo_file):
+        memo_text = extract_memo_from_file(memo_file)
+        memo_summary = {
+            "date": memo_date,
+            "summary": summarize_memo_text(memo_text),
+            "hasMemo": True,
+        }
+
+    current = {
+        "state": snapshot.get("state") or "idle",
+        "detail": snapshot.get("detail") or "",
+        "hero": snapshot.get("hero") or "",
+        "source": snapshot.get("source") or "unknown",
+        "event_type": snapshot.get("event_type") or "unknown",
+        "request_id": snapshot.get("request_id"),
+        "sequence": snapshot.get("sequence") or 0,
+        "updated_at": snapshot.get("updated_at"),
+    }
+
+    return {
+        "current": current,
+        "history": build_status_history(snapshot, STATUS_FEED_HISTORY_LIMIT),
+        "watcher": read_watcher_status(),
+        "memoSummary": memo_summary,
+    }
+
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="/static")
 
 # Guard join-agent critical section to enforce per-key concurrency under parallel requests
 join_lock = threading.Lock()
+auto_idle_worker_lock = threading.Lock()
+auto_idle_worker_started = False
+AUTO_IDLE_POLL_SECONDS = 5.0
 
 # Generate a version timestamp once at server startup for cache busting
 VERSION_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -149,74 +320,60 @@ def add_no_cache_headers(response):
     return response
 
 # Default state
-DEFAULT_STATE = {
-    "state": "idle",
-    "detail": "等待任务中...",
-    "progress": 0,
-    "updated_at": datetime.now().isoformat()
-}
+DEFAULT_STATE = dict(EVENT_DEFAULT_STATE)
 
 
 def load_state():
-    """Load state from file.
-
-    Includes a simple auto-idle mechanism:
-    - If the last update is older than ttl_seconds (default 25s)
-      and the state is a "working" state, we fall back to idle.
-
-    This avoids the UI getting stuck at the desk when no new updates arrive.
-    """
-    state = None
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                state = json.load(f)
-        except Exception:
-            state = None
-
-    if not isinstance(state, dict):
-        state = dict(DEFAULT_STATE)
-
-    # Auto-idle
-    try:
-        ttl = int(state.get("ttl_seconds", 300))
-        updated_at = state.get("updated_at")
-        s = state.get("state", "idle")
-        working_states = {"writing", "researching", "executing"}
-        if updated_at and s in working_states:
-            # tolerate both with/without timezone
-            dt = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-            # Use UTC for aware datetimes; local time for naive.
-            if dt.tzinfo:
-                from datetime import timezone
-                age = (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds()
-            else:
-                age = (datetime.now() - dt).total_seconds()
-            if age > ttl:
-                state["state"] = "idle"
-                state["detail"] = "待命中（自动回到休息区）"
-                state["progress"] = 0
-                state["updated_at"] = datetime.now().isoformat()
-                # persist the auto-idle so every client sees it consistently
-                try:
-                    save_state(state)
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    return state
+    """Read the current coordinated state snapshot without side effects."""
+    return read_state_snapshot()
 
 
 def save_state(state: dict):
-    """Save state to file"""
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    """Compatibility wrapper that routes writes through the coordinator."""
+    request_id = state.get("request_id")
+    sequence = None
+    if request_id is not None:
+        try:
+            sequence = int(state.get("sequence") or 0) + 1
+        except (TypeError, ValueError):
+            sequence = 1
+    _, snapshot = submit_snapshot_event(
+        state,
+        source="backend_api",
+        event_type="api_set",
+        request_id=request_id,
+        sequence=sequence,
+        reason=state.get("task_board_reason") or "backend_save_state",
+    )
+    return snapshot
+
+
+def _auto_idle_loop():
+    while True:
+        try:
+            ensure_auto_idle()
+        except Exception as exc:
+            print(f"[auto-idle-worker] {exc}")
+        time.sleep(AUTO_IDLE_POLL_SECONDS)
+
+
+def start_auto_idle_worker():
+    global auto_idle_worker_started
+    with auto_idle_worker_lock:
+        if auto_idle_worker_started:
+            return
+        worker = threading.Thread(
+            target=_auto_idle_loop,
+            name="brotherhood-auto-idle",
+            daemon=True,
+        )
+        worker.start()
+        auto_idle_worker_started = True
 
 
 # Initialize state
-if not os.path.exists(STATE_FILE):
-    save_state(DEFAULT_STATE)
+ensure_bootstrap_state()
+start_auto_idle_worker()
 
 
 @app.route("/", methods=["GET"])
@@ -653,9 +810,8 @@ def leave_agent():
 
 @app.route("/status", methods=["GET"])
 def get_status():
-    """Get current main state (backward compatibility)"""
-    state = load_state()
-    return jsonify(state)
+    """Get current main state (backward compatibility, pure read)."""
+    return jsonify(load_state())
 
 
 @app.route("/agent-push", methods=["POST"])
@@ -735,38 +891,26 @@ def health():
         {
             "status": "ok",
             "app": "Brotherhood-UI",
+            "repoRoot": ROOT_DIR,
+            "port": BOARD_PORT,
+            "autoIdleWorker": auto_idle_worker_started,
             "timestamp": datetime.now().isoformat(),
         }
     )
+
+
+@app.route("/status-feed", methods=["GET"])
+def get_status_feed():
+    """Aggregate state, recent history, watcher status, and memo summary for the narrative UI."""
+    return jsonify(build_status_feed_payload())
 
 
 @app.route("/yesterday-memo", methods=["GET"])
 def get_yesterday_memo():
     """获取昨日小日记"""
     try:
-        # 先尝试找昨天的文件
-        yesterday_str = get_yesterday_date_str()
-        yesterday_file = os.path.join(MEMORY_DIR, f"{yesterday_str}.md")
-        
-        target_file = None
-        target_date = yesterday_str
-        
-        if os.path.exists(yesterday_file):
-            target_file = yesterday_file
-        else:
-            # 如果昨天没有，找最近的一天
-            if os.path.exists(MEMORY_DIR):
-                files = [f for f in os.listdir(MEMORY_DIR) if f.endswith(".md") and re.match(r"\d{4}-\d{2}-\d{2}\.md", f)]
-                if files:
-                    files.sort(reverse=True)
-                    # 跳过今天的（如果存在）
-                    today_str = datetime.now().strftime("%Y-%m-%d")
-                    for f in files:
-                        if f != f"{today_str}.md":
-                            target_file = os.path.join(MEMORY_DIR, f)
-                            target_date = f.replace(".md", "")
-                            break
-        
+        target_file, target_date = locate_recent_memo_file()
+
         if target_file and os.path.exists(target_file):
             memo_content = extract_memo_from_file(target_file)
             return jsonify({
@@ -802,8 +946,9 @@ def set_state_endpoint():
         if "detail" in data:
             state["detail"] = data["detail"]
         state["updated_at"] = datetime.now().isoformat()
-        save_state(state)
-        return jsonify({"status": "ok"})
+        state["task_board_reason"] = "backend_control_panel"
+        snapshot = save_state(state)
+        return jsonify({"status": "ok", "state": snapshot})
     except Exception as e:
         return jsonify({"status": "error", "msg": str(e)}), 500
 
@@ -813,7 +958,7 @@ if __name__ == "__main__":
     print("Brotherhood-UI - Backend State Service")
     print("=" * 50)
     print(f"State file: {STATE_FILE}")
-    print("Listening on: http://0.0.0.0:18791")
+    print(f"Listening on: http://0.0.0.0:{BOARD_PORT}")
     print("=" * 50)
     
-    app.run(host="0.0.0.0", port=18791, debug=False)
+    app.run(host="0.0.0.0", port=BOARD_PORT, debug=False)

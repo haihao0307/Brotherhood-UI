@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-03-23T18:59:22",
+  "sourceType": "spritesheet_png",
+  "sourcePath": "placeholder://luzhishen_walking",
+  "frameRate": 5,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frames": 6,
+  "sheetWidth": 1536,
+  "sheetHeight": 256,
+  "output": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\luzhishen_walking-spritesheet.png",
+  "frameFiles": null
+}

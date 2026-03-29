@@ -1,274 +1,36 @@
 (function () {
   'use strict';
 
+  const runtimeHelpers = window.StarOfficeThemeRuntime || {};
+  const roamingApi = window.StarOfficeThemeRoaming || {};
   const KNOWN_STATES = ['idle', 'writing', 'researching', 'executing', 'syncing', 'error'];
-
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-  function normalizeOrigin(o, fallback) {
-    if (!o || typeof o !== 'object') return fallback;
-    const x = (typeof o.x === 'number') ? o.x : fallback.x;
-    const y = (typeof o.y === 'number') ? o.y : fallback.y;
-    return { x, y };
-  }
-
-  function parseTint(t) {
-    if (!t) return null;
-    if (typeof t === 'number') return t;
-    if (typeof t === 'string') {
-      if (t.startsWith('0x')) return parseInt(t, 16);
-      return parseInt(t, 10);
-    }
-    return null;
-  }
-
-  function safeArray(v) { return Array.isArray(v) ? v : []; }
-
-  function resolveAssetUrl(asset, version, supportsWebP) {
-    if (!asset) return null;
-    if (supportsWebP && asset.webp) return asset.webp + '?v=' + version;
-    if (asset.png) return asset.png + '?v=' + version;
-    if (asset.webp) return asset.webp + '?v=' + version;
-    return null;
-  }
-
-  function normalizeSpriteAsset(asset, fallbackScale) {
-    if (!asset || typeof asset !== 'object') return null;
-    if (typeof asset.frameWidth !== 'number' || typeof asset.frameHeight !== 'number') return null;
-    return {
-      png: asset.png || null,
-      webp: asset.webp || null,
-      frameWidth: Number(asset.frameWidth),
-      frameHeight: Number(asset.frameHeight),
-      frames: Math.max(1, Number(asset.frames || 1)),
-      frameRate: Math.max(1, Number(asset.frameRate || 6)),
-      scale: (typeof asset.scale === 'number') ? asset.scale : fallbackScale,
-      loop: asset.loop !== false
-    };
-  }
-
-  function defaultLegacyPositions() {
-    return {
-      idle: { x: 640, y: 600 },
-      writing: { x: 320, y: 520 },
-      researching: { x: 320, y: 520 },
-      executing: { x: 320, y: 520 },
-      syncing: { x: 640, y: 620 },
-      error: { x: 1066, y: 360 }
-    };
-  }
-
-  function normalizeSlotMap(slots) {
-    const out = {};
-    if (!slots || typeof slots !== 'object') return out;
-    Object.keys(slots).forEach((key) => {
-      const node = slots[key];
-      if (!node || typeof node !== 'object') return;
-      if (typeof node.x !== 'number' || typeof node.y !== 'number') return;
-      out[key] = { x: Number(node.x), y: Number(node.y) };
-    });
-    return out;
-  }
-
-  function buildLegacyRuntime(themeConfig) {
-    const legacyPositions = Object.assign(defaultLegacyPositions(), themeConfig && themeConfig.positions ? themeConfig.positions : {});
-    const hero = (themeConfig && themeConfig.hero) ? themeConfig.hero : {};
-    const baseScale = (typeof hero.scale === 'number') ? hero.scale : 1.0;
-    const origin = normalizeOrigin(hero.origin, { x: 0.5, y: 1.0 });
-    const walking = normalizeSpriteAsset(themeConfig && themeConfig.assets && themeConfig.assets.hero, baseScale);
-    const heroStates = (themeConfig && themeConfig.assets && themeConfig.assets.heroStates && typeof themeConfig.assets.heroStates === 'object')
-      ? themeConfig.assets.heroStates
-      : {};
-    const states = {};
-
-    Object.keys(heroStates).forEach((state) => {
-      const asset = normalizeSpriteAsset(heroStates[state], baseScale);
-      if (asset) states[state] = asset;
-    });
-
-    if (!states.idle && walking) states.idle = walking;
-    if (!states.idle_a && states.idle) states.idle_a = states.idle;
-    if (!states.idle_b && states.idle) states.idle_b = states.idle;
-    if (!states.researching && states.idle) states.researching = states.idle;
-
-    const slots = {
-      mainHome: legacyPositions.idle || { x: 640, y: 600 },
-      mainCommand: legacyPositions.syncing || legacyPositions.idle || { x: 640, y: 600 },
-      mainResearch: legacyPositions.researching || legacyPositions.idle || { x: 640, y: 600 },
-      supportWriting: legacyPositions.writing || legacyPositions.idle || { x: 640, y: 600 },
-      supportExecuting: legacyPositions.executing || legacyPositions.idle || { x: 640, y: 600 },
-      supportSyncing: legacyPositions.syncing || legacyPositions.idle || { x: 640, y: 600 },
-      supportError: legacyPositions.error || legacyPositions.idle || { x: 640, y: 600 }
-    };
-
-    const scenes = {
-      idle: { mainSlot: 'mainHome', mainAnimation: 'idle_a', supportVisible: false },
-      writing: { mainSlot: 'supportWriting', mainAnimation: 'writing', supportVisible: false },
-      researching: { mainSlot: 'mainResearch', mainAnimation: 'researching', supportVisible: false },
-      executing: { mainSlot: 'supportExecuting', mainAnimation: 'executing', supportVisible: false },
-      syncing: { mainSlot: 'supportSyncing', mainAnimation: 'syncing', supportVisible: false },
-      error: { mainSlot: 'supportError', mainAnimation: 'error', supportVisible: false }
-    };
-
-    return {
-      assets: (themeConfig && themeConfig.assets) ? themeConfig.assets : {},
-      effects: (themeConfig && themeConfig.effects) ? themeConfig.effects : {},
-      objects: safeArray(themeConfig && themeConfig.objects),
-      slots: slots,
-      scenes: scenes,
-      mainHero: {
-        id: String(hero.id || hero.role || 'main'),
-        role: String(hero.role || hero.id || 'main'),
-        origin: origin,
-        scale: baseScale,
-        walking: walking,
-        states: states
-      },
-      supportHeroes: {}
-    };
-  }
-
-  function buildConfiguredRuntime(themeConfig) {
-    const cfg = themeConfig || {};
-    const mainCfg = (cfg.mainHero && typeof cfg.mainHero === 'object') ? cfg.mainHero : {};
-    const fallbackHero = (cfg.hero && typeof cfg.hero === 'object') ? cfg.hero : {};
-    const mainScale = (typeof mainCfg.scale === 'number') ? mainCfg.scale : ((typeof fallbackHero.scale === 'number') ? fallbackHero.scale : 1.0);
-    const mainOrigin = normalizeOrigin(mainCfg.origin || fallbackHero.origin, { x: 0.5, y: 1.0 });
-    const mainStatesRaw = (mainCfg.states && typeof mainCfg.states === 'object') ? mainCfg.states : {};
-    const mainStates = {};
-
-    Object.keys(mainStatesRaw).forEach((key) => {
-      const asset = normalizeSpriteAsset(mainStatesRaw[key], mainScale);
-      if (asset) mainStates[key] = asset;
-    });
-
-    if (!mainStates.idle && cfg.assets && cfg.assets.heroStates && cfg.assets.heroStates.idle) {
-      mainStates.idle = normalizeSpriteAsset(cfg.assets.heroStates.idle, mainScale);
-    }
-    if (!mainStates.idle_a && mainStates.idle) mainStates.idle_a = mainStates.idle;
-    if (!mainStates.idle_b && mainStates.idle) mainStates.idle_b = mainStates.idle;
-    if (!mainStates.researching && cfg.assets && cfg.assets.heroStates && cfg.assets.heroStates.researching) {
-      mainStates.researching = normalizeSpriteAsset(cfg.assets.heroStates.researching, mainScale);
-    }
-
-    const walking = normalizeSpriteAsset(mainCfg.walking || (cfg.assets && cfg.assets.hero), mainScale);
-    const supportHeroes = {};
-    const supportCfg = (cfg.supportHeroes && typeof cfg.supportHeroes === 'object') ? cfg.supportHeroes : {};
-
-    Object.keys(supportCfg).forEach((heroId) => {
-      const node = supportCfg[heroId];
-      if (!node || typeof node !== 'object') return;
-      const scale = (typeof node.scale === 'number') ? node.scale : 1.0;
-      const states = {};
-      const rawStates = (node.states && typeof node.states === 'object') ? node.states : {};
-      Object.keys(rawStates).forEach((state) => {
-        const asset = normalizeSpriteAsset(rawStates[state], scale);
-        if (asset) states[state] = asset;
-      });
-      if (!states.idle) {
-        const firstState = Object.keys(states)[0];
-        if (firstState) states.idle = states[firstState];
-      }
-      supportHeroes[heroId] = {
-        id: heroId,
-        label: String(node.label || heroId),
-        role: String(node.role || heroId),
-        origin: normalizeOrigin(node.origin, { x: 0.5, y: 1.0 }),
-        scale: scale,
-        states: states,
-        depth: (typeof node.depth === 'number') ? node.depth : 120
-      };
-    });
-
-    const scenes = {};
-    const rawScenes = (cfg.stateScenes && typeof cfg.stateScenes === 'object') ? cfg.stateScenes : {};
-    KNOWN_STATES.forEach((state) => {
-      const node = (rawScenes[state] && typeof rawScenes[state] === 'object') ? rawScenes[state] : {};
-      scenes[state] = {
-        mainSlot: String(node.mainSlot || 'mainHome'),
-        mainAnimation: String(node.mainAnimation || (state === 'idle' ? 'idle_a' : state)),
-        supportVisible: node.supportVisible === true,
-        supportHero: node.supportHero ? String(node.supportHero) : null,
-        supportSlot: String(node.supportSlot || 'supportWriting'),
-        supportAnimation: String(node.supportAnimation || 'idle')
-      };
-    });
-    if (!scenes.idle) scenes.idle = { mainSlot: 'mainHome', mainAnimation: 'idle_a', supportVisible: false };
-
-    return {
-      assets: (cfg.assets && typeof cfg.assets === 'object') ? cfg.assets : {},
-      effects: (cfg.effects && typeof cfg.effects === 'object') ? cfg.effects : {},
-      objects: safeArray(cfg.objects),
-      slots: normalizeSlotMap(cfg.slots),
-      scenes: scenes,
-      mainHero: {
-        id: String(mainCfg.id || mainCfg.role || fallbackHero.id || fallbackHero.role || 'songjiang'),
-        role: String(mainCfg.role || fallbackHero.role || 'songjiang'),
-        origin: mainOrigin,
-        scale: mainScale,
-        walking: walking,
-        states: mainStates
-      },
-      supportHeroes: supportHeroes
-    };
-  }
-
-  function buildRuntimeTheme(themeConfig) {
-    if (themeConfig && themeConfig.mainHero) return buildConfiguredRuntime(themeConfig);
-    return buildLegacyRuntime(themeConfig);
-  }
-
-  function getEffect(runtime, state) {
-    const effects = runtime && runtime.effects;
-    const e = effects && effects[state];
-    if (!e) return { tint: null, shake: 0.0, bob: 0.0 };
-    return {
-      tint: parseTint(e.tint),
-      shake: Number(e.shake || 0),
-      bob: Number(e.bob || 0)
-    };
-  }
-
-  function resolveStateAsset(actorDef, desiredState) {
-    if (!actorDef || !actorDef.states) return null;
-    const states = actorDef.states;
-    if (desiredState && states[desiredState]) return { state: desiredState, asset: states[desiredState] };
-    if (desiredState === 'idle_a' && states.idle) return { state: 'idle', asset: states.idle };
-    if (desiredState === 'idle_b' && states.idle) return { state: 'idle', asset: states.idle };
-    if (desiredState && desiredState !== 'idle' && states.idle) return { state: 'idle', asset: states.idle };
-    const firstState = Object.keys(states)[0];
-    if (!firstState) return null;
-    return { state: firstState, asset: states[firstState] };
-  }
-
-  function makeStateTextureKey(prefix, actorId, state) {
-    return prefix + '_' + actorId + '_' + state;
-  }
-
-  function makeWalkTextureKey(actorId) {
-    return 'walk_' + actorId;
-  }
-
-  function getSlot(runtime, slotId, fallback) {
-    const slot = runtime && runtime.slots && runtime.slots[slotId];
-    if (slot && typeof slot.x === 'number' && typeof slot.y === 'number') return slot;
-    return fallback || { x: 640, y: 600 };
-  }
+  const safeArray = runtimeHelpers.safeArray;
+  const clamp = runtimeHelpers.clamp;
+  const normalizeAssetRef = runtimeHelpers.normalizeAssetRef;
+  const normalizeAssetOrigin = runtimeHelpers.normalizeOrigin;
+  const normalizeSpriteAsset = runtimeHelpers.normalizeSpriteAsset;
+  const resolveAssetUrl = runtimeHelpers.resolveAssetUrl;
+  const assetMatchesScope = runtimeHelpers.assetMatchesScope;
+  const makeStateTextureKey = runtimeHelpers.makeStateTextureKey;
+  const expandObjectDefinitions = runtimeHelpers.expandObjectDefinitions;
+  const resolveStateAsset = runtimeHelpers.resolveStateAsset;
+  const buildRuntimeTheme = runtimeHelpers.buildRuntimeTheme;
 
   function ThemeEngine(themeConfig, opts) {
     this.themeConfig = themeConfig || {};
-    this.runtime = buildRuntimeTheme(themeConfig);
+    this.runtime = buildRuntimeTheme(themeConfig || {});
     this.version = (opts && opts.version) || '0';
     this.supportsWebP = !!(opts && opts.supportsWebP);
 
     this.scene = null;
     this.bg = null;
-    this.bgFg = null;
-    this.objects = [];
+    this.mainObjects = [];
+    this.childObjectsByState = {};
     this.objectBubbles = [];
 
     this.mainActor = null;
-    this.supportActor = null;
+    this.supportCast = {};
+    this.childActor = null;
     this.hero = null;
 
     this.heroBase = { x: 640, y: 600 };
@@ -276,65 +38,41 @@
     this.moving = false;
 
     this.currentState = 'idle';
-    this.currentScene = this.runtime.scenes.idle || { mainSlot: 'mainHome', mainAnimation: 'idle_a', supportVisible: false };
-    this.activeSupportHeroId = null;
-    this.supportVisible = false;
+    this.sceneMode = 'main_idle';
+    this.activeWorkerHeroId = null;
+    this.handoffTargetHeroId = null;
+    this.currentSubscene = null;
+    this.idleEventEmphasis = {};
+    this.supportRoamingEnabled = false;
+    this.supportRoamingState = {};
   }
 
   ThemeEngine.prototype.preload = function (scene) {
     this.scene = scene;
     const runtime = this.runtime;
-    const ver = this.version;
-    const sw = this.supportsWebP;
+    const version = this.version;
+    const supportsWebP = this.supportsWebP;
 
-    const bgUrl = resolveAssetUrl(runtime.assets && runtime.assets.bg, ver, sw);
-    if (bgUrl) scene.load.image('bg', bgUrl);
+    const mainBgUrl = resolveAssetUrl(runtime.mainScene.background, version, supportsWebP);
+    if (mainBgUrl) scene.load.image('scene_bg_main', mainBgUrl);
 
-    const bgFgUrl = resolveAssetUrl(runtime.assets && runtime.assets.bgFg, ver, sw);
-    if (bgFgUrl) scene.load.image('bg_fg', bgFgUrl);
-
-    const mainHero = runtime.mainHero;
-    if (mainHero && mainHero.walking) {
-      const walkUrl = resolveAssetUrl(mainHero.walking, ver, sw);
-      if (walkUrl) {
-        scene.load.spritesheet(makeWalkTextureKey(mainHero.id), walkUrl, {
-          frameWidth: mainHero.walking.frameWidth,
-          frameHeight: mainHero.walking.frameHeight
-        });
-      }
-    }
-
-    const mainStates = (mainHero && mainHero.states) ? mainHero.states : {};
-    Object.keys(mainStates).forEach((state) => {
-      const asset = mainStates[state];
-      const url = resolveAssetUrl(asset, ver, sw);
+    Object.keys(runtime.subscenes).forEach((state) => {
+      const node = runtime.subscenes[state];
+      const url = resolveAssetUrl(node.background, version, supportsWebP);
       if (!url) return;
-      scene.load.spritesheet(makeStateTextureKey('main', mainHero.id, state), url, {
-        frameWidth: asset.frameWidth,
-        frameHeight: asset.frameHeight
-      });
+      scene.load.image('scene_bg_' + state, url);
     });
 
-    const supportHeroes = runtime.supportHeroes || {};
-    Object.keys(supportHeroes).forEach((heroId) => {
-      const heroDef = supportHeroes[heroId];
-      const states = heroDef.states || {};
-      Object.keys(states).forEach((state) => {
-        const asset = states[state];
-        const url = resolveAssetUrl(asset, ver, sw);
-        if (!url) return;
-        scene.load.spritesheet(makeStateTextureKey('support', heroId, state), url, {
-          frameWidth: asset.frameWidth,
-          frameHeight: asset.frameHeight
-        });
-      });
+    this.preloadActorStates(scene, 'main', runtime.mainHero);
+    Object.keys(runtime.supportHeroes).forEach((heroId) => {
+      this.preloadActorStates(scene, 'support', runtime.supportHeroes[heroId]);
     });
 
-    const sheets = (runtime.assets && runtime.assets.spritesheets) ? runtime.assets.spritesheets : {};
-    Object.keys(sheets).forEach((key) => {
-      const sh = sheets[key];
-      const url = resolveAssetUrl(sh, ver, sw);
-      if (!url) return;
+    const spritesheets = (runtime.assets && runtime.assets.spritesheets) ? runtime.assets.spritesheets : {};
+    Object.keys(spritesheets).forEach((key) => {
+      const sh = normalizeSpriteAsset(spritesheets[key], 1.0);
+      const url = resolveAssetUrl(spritesheets[key], version, supportsWebP);
+      if (!sh || !url) return;
       scene.load.spritesheet('ss_' + key, url, {
         frameWidth: sh.frameWidth,
         frameHeight: sh.frameHeight
@@ -342,77 +80,79 @@
     });
   };
 
+  ThemeEngine.prototype.preloadActorStates = function (scene, prefix, actorDef) {
+    if (!actorDef || !actorDef.states) return;
+    Object.keys(actorDef.states).forEach((state) => {
+      const asset = actorDef.states[state];
+      const url = resolveAssetUrl(asset, this.version, this.supportsWebP);
+      if (!url) return;
+      scene.load.spritesheet(makeStateTextureKey(prefix, actorDef.id, state), url, {
+        frameWidth: asset.frameWidth,
+        frameHeight: asset.frameHeight
+      });
+    });
+  };
+
   ThemeEngine.prototype.create = function (scene) {
     this.scene = scene;
-    const runtime = this.runtime;
-    const mainHero = runtime.mainHero;
 
-    this.bg = scene.add.image(640, 360, 'bg').setOrigin(0.5);
-    const scaleX = 1280 / this.bg.width;
-    const scaleY = 720 / this.bg.height;
-    this.bg.setScale(Math.max(scaleX, scaleY));
+    this.bg = scene.add.image(640, 360, 'scene_bg_main').setOrigin(0.5);
+    this.fitBackground(this.bg);
     this.bg.setDepth(0);
 
-    const home = getSlot(runtime, 'mainHome', { x: 640, y: 600 });
-    this.target = { x: home.x, y: home.y };
-    this.heroBase = { x: home.x, y: home.y };
+    this.createMainCast(scene);
+    this.createChildActor(scene);
+    this.mainObjects = this.createObjectsFromDefs(scene, this.runtime.mainObjects, this.runtime.mainScene.propsRoot);
+    Object.keys(this.runtime.subscenes).forEach((state) => {
+      const defs = this.runtime.subscenes[state].objects || [];
+      const nodes = this.createObjectsFromDefs(scene, defs, this.runtime.subscenes[state].propsRoot);
+      this.childObjectsByState[state] = nodes;
+      this.setObjectListVisible(nodes, false);
+    });
 
-    this.initMainActor(scene, mainHero);
-    this.initSupportActor(scene);
-
-    this.createObjectsFromTheme(scene);
-
-    if (scene.textures.exists('bg_fg')) {
-      this.bgFg = scene.add.image(640, 360, 'bg_fg').setOrigin(0.5);
-      this.bgFg.setScale(this.bg.scaleX, this.bg.scaleY);
-      this.bgFg.setDepth(1000);
-    }
+    this.enterMainIdle();
   };
 
-  ThemeEngine.prototype.initMainActor = function (scene, mainHero) {
-    const walkTextureKey = makeWalkTextureKey(mainHero.id);
-    const firstState = resolveStateAsset(mainHero, 'idle_a') || resolveStateAsset(mainHero, 'idle');
-    const initialTextureKey = scene.textures.exists(walkTextureKey)
-      ? walkTextureKey
-      : (firstState ? makeStateTextureKey('main', mainHero.id, firstState.state) : null);
+  ThemeEngine.prototype.createMainCast = function (scene) {
+    const runtime = this.runtime;
+    const mainCastNode = runtime.mainScene.cast[runtime.mainHero.id] || { x: 640, y: 600, depth: 240, animationState: 'idle_a' };
+    const mainInitial = resolveStateAsset(runtime.mainHero, mainCastNode.animationState) || resolveStateAsset(runtime.mainHero, 'idle');
+    const mainTexture = mainInitial ? makeStateTextureKey('main', runtime.mainHero.id, mainInitial.state) : '__MISSING';
 
-    this.mainActor = scene.add.sprite(this.heroBase.x, this.heroBase.y, initialTextureKey || '__MISSING').setOrigin(mainHero.origin.x, mainHero.origin.y);
-    this.mainActor.setScale(mainHero.scale);
-    this.mainActor.setDepth(100);
+    this.mainActor = scene.add.sprite(mainCastNode.x, mainCastNode.y, mainTexture).setOrigin(runtime.mainHero.origin.x, runtime.mainHero.origin.y);
+    this.mainActor.setDepth(typeof mainCastNode.depth === 'number' ? mainCastNode.depth : 240);
+    this.playActorState(this.mainActor, runtime.mainHero, 'main', mainCastNode.animationState);
+
+    Object.keys(runtime.supportHeroes).forEach((heroId) => {
+      const heroDef = runtime.supportHeroes[heroId];
+      const castNode = runtime.mainScene.cast[heroId];
+      if (!castNode) return;
+      const initial = resolveStateAsset(heroDef, castNode.animationState || 'idle') || resolveStateAsset(heroDef, 'idle');
+      const texture = initial ? makeStateTextureKey('support', heroId, initial.state) : '__MISSING';
+      const actor = scene.add.sprite(castNode.x, castNode.y, texture).setOrigin(heroDef.origin.x, heroDef.origin.y);
+      actor.setDepth(typeof castNode.depth === 'number' ? castNode.depth : heroDef.depth);
+      this.playActorState(actor, heroDef, 'support', castNode.animationState || 'idle');
+      this.supportCast[heroId] = actor;
+    });
+
+    this.heroBase = { x: this.mainActor.x, y: this.mainActor.y };
+    this.target = { x: this.mainActor.x, y: this.mainActor.y };
     this.hero = this.mainActor;
 
-    if (mainHero.walking && scene.textures.exists(walkTextureKey) && !scene.anims.exists('main_walk_' + mainHero.id)) {
-      scene.anims.create({
-        key: 'main_walk_' + mainHero.id,
-        frames: scene.anims.generateFrameNumbers(walkTextureKey, { start: 0, end: Math.max(0, mainHero.walking.frames - 1) }),
-        frameRate: mainHero.walking.frameRate,
-        repeat: -1
-      });
-    }
-
-    this.initStateAnimations(scene, 'main', mainHero.id, mainHero.states);
+    this.initStateAnimations(scene, 'main', runtime.mainHero.id, runtime.mainHero.states);
+    Object.keys(runtime.supportHeroes).forEach((heroId) => {
+      this.initStateAnimations(scene, 'support', heroId, runtime.supportHeroes[heroId].states);
+    });
+    this.initSupportRoaming();
   };
 
-  ThemeEngine.prototype.initSupportActor = function (scene) {
-    const supportHeroIds = Object.keys(this.runtime.supportHeroes || {});
-    const firstHeroId = supportHeroIds[0];
-    const firstHero = firstHeroId ? this.runtime.supportHeroes[firstHeroId] : null;
-    const firstState = firstHero ? (resolveStateAsset(firstHero, 'idle') || resolveStateAsset(firstHero, null)) : null;
-    const initialTextureKey = (firstHero && firstState)
-      ? makeStateTextureKey('support', firstHero.id, firstState.state)
-      : (this.mainActor ? this.mainActor.texture.key : '__MISSING');
-    const origin = firstHero ? firstHero.origin : { x: 0.5, y: 1.0 };
-    const scale = firstHero ? firstHero.scale : 1.0;
-
-    this.supportActor = scene.add.sprite(this.heroBase.x, this.heroBase.y, initialTextureKey || '__MISSING').setOrigin(origin.x, origin.y);
-    this.supportActor.setScale(scale);
-    this.supportActor.setVisible(false);
-    this.supportActor.setDepth(firstHero ? firstHero.depth : 120);
-
-    supportHeroIds.forEach((heroId) => {
-      const heroDef = this.runtime.supportHeroes[heroId];
-      this.initStateAnimations(scene, 'support', heroId, heroDef.states);
-    });
+  ThemeEngine.prototype.createChildActor = function (scene) {
+    const mainHero = this.runtime.mainHero;
+    const initial = resolveStateAsset(mainHero, 'idle') || resolveStateAsset(mainHero, 'idle_a');
+    const texture = initial ? makeStateTextureKey('main', mainHero.id, initial.state) : '__MISSING';
+    this.childActor = scene.add.sprite(640, 600, texture).setOrigin(mainHero.origin.x, mainHero.origin.y);
+    this.childActor.setDepth(220);
+    this.childActor.setVisible(false);
   };
 
   ThemeEngine.prototype.initStateAnimations = function (scene, prefix, actorId, states) {
@@ -432,278 +172,524 @@
     });
   };
 
-  ThemeEngine.prototype.createObjectsFromTheme = function (scene) {
-    const runtime = this.runtime;
-    const objects = safeArray(runtime.objects);
-    const sheets = (runtime.assets && runtime.assets.spritesheets) ? runtime.assets.spritesheets : {};
-    const bubbles = this.objectBubbles;
+  ThemeEngine.prototype.createObjectsFromDefs = function (scene, defs, scopeRoot) {
+    const spritesheets = (this.runtime.assets && this.runtime.assets.spritesheets) ? this.runtime.assets.spritesheets : {};
+    const nodes = [];
 
     const ensureAnim = (key, sh) => {
       const animKey = 'anim_' + key;
       if (scene.anims.exists(animKey)) return animKey;
-      const frames = (sh && sh.frames) ? Number(sh.frames) : 1;
-      const fr = (sh && sh.frameRate) ? Number(sh.frameRate) : 6;
       scene.anims.create({
         key: animKey,
-        frames: scene.anims.generateFrameNumbers('ss_' + key, { start: 0, end: Math.max(0, frames - 1) }),
-        frameRate: fr,
+        frames: scene.anims.generateFrameNumbers('ss_' + key, { start: 0, end: Math.max(0, Number(sh.frames || 1) - 1) }),
+        frameRate: Math.max(1, Number(sh.frameRate || 6)),
         repeat: -1
       });
       return animKey;
     };
 
-    for (const o of objects) {
-      if (!o || typeof o !== 'object') continue;
-      const type = o.type || 'animated';
-      const depth = (typeof o.depth === 'number') ? o.depth : 50;
-      const scale = (typeof o.scale === 'number') ? o.scale : 1.0;
-      const origin = normalizeOrigin(o.origin, { x: 0.5, y: 1.0 });
+    expandObjectDefinitions(defs).forEach((objectDef) => {
+      if (!objectDef || typeof objectDef !== 'object') return;
+      const type = objectDef.type || 'animated';
+      const depth = (typeof objectDef.depth === 'number') ? objectDef.depth : 50;
+      const scale = (typeof objectDef.scale === 'number') ? objectDef.scale : 1.0;
+      const origin = normalizeAssetOrigin(objectDef.origin, { x: 0.5, y: 1.0 });
 
       if (type === 'animated') {
-        const key = o.key;
-        const sh = sheets[key];
-        if (!key || !sh) continue;
-        if (!scene.textures.exists('ss_' + key)) continue;
-
+        const key = objectDef.key;
+        const sh = spritesheets[key];
+        if (!assetMatchesScope(sh, scopeRoot)) return;
+        if (!key || !sh || !scene.textures.exists('ss_' + key)) return;
         const animKey = ensureAnim(key, sh);
-        const sp = scene.add.sprite(o.x || 0, o.y || 0, 'ss_' + key, 0).setOrigin(origin.x, origin.y);
+        const sp = scene.add.sprite(objectDef.x || 0, objectDef.y || 0, 'ss_' + key, 0).setOrigin(origin.x, origin.y);
         sp.setScale(scale);
         sp.setDepth(depth);
         sp.anims.play(animKey, true);
-
-        if (o.clickText) {
-          sp.setInteractive({ useHandCursor: true });
-          sp.on('pointerdown', () => {
-            const b = scene.add.text(sp.x, sp.y - 20, String(o.clickText), {
-              fontFamily: 'ArkPixel, monospace',
-              fontSize: '12px',
-              color: '#111',
-              backgroundColor: '#fff7d6',
-              padding: { x: 6, y: 4 }
-            }).setOrigin(0.5, 1.0);
-            b.setDepth(2000);
-            bubbles.push({ t: scene.time.now + 2200, node: b });
-          });
-        }
-
-        this.objects.push(sp);
+        nodes.push(sp);
+        if (objectDef.clickText) this.attachObjectBubble(scene, sp, objectDef.clickText);
+        return;
       }
-    }
+
+      if (type === 'image') {
+        const imgKey = objectDef.imageKey;
+        if (!imgKey || !scene.textures.exists(imgKey)) return;
+        const image = scene.add.image(objectDef.x || 0, objectDef.y || 0, imgKey).setOrigin(origin.x, origin.y);
+        image.setScale(scale);
+        image.setDepth(depth);
+        nodes.push(image);
+        if (objectDef.clickText) this.attachObjectBubble(scene, image, objectDef.clickText);
+      }
+    });
+
+    return nodes;
   };
 
-  ThemeEngine.prototype.getSceneForState = function (state) {
-    const scenes = this.runtime.scenes || {};
-    return scenes[state] || scenes.idle || { mainSlot: 'mainHome', mainAnimation: 'idle_a', supportVisible: false };
+  ThemeEngine.prototype.attachObjectBubble = function (scene, target, text) {
+    target.setInteractive({ useHandCursor: true });
+    target.on('pointerdown', (pointer) => {
+      pointer.event.stopPropagation();
+      const fontSize = 12;
+      const padX = 8;
+      const padY = 6;
+      const maxW = 220;
+
+      const txt = scene.add.text(0, 0, String(text), {
+        fontFamily: 'ArkPixel, monospace',
+        fontSize: fontSize + 'px',
+        color: '#111',
+        wordWrap: { width: maxW }
+      }).setOrigin(0.5);
+
+      const w = clamp(txt.width + padX * 2, 60, maxW + padX * 2);
+      const h = clamp(txt.height + padY * 2, 26, 80);
+
+      const g = scene.add.graphics();
+      g.fillStyle(0xfff7d6, 0.98);
+      g.lineStyle(3, 0x1b1b1b, 1);
+      g.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
+      g.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
+      g.fillTriangle(-10, h / 2 - 2, 10, h / 2 - 2, 0, h / 2 + 12);
+      g.strokeTriangle(-10, h / 2 - 2, 10, h / 2 - 2, 0, h / 2 + 12);
+
+      const c = scene.add.container(target.x, target.y - 30, [g, txt]);
+      c.setDepth(9999);
+      this.objectBubbles.push({ node: c, t: scene.time.now + 2400 });
+    });
   };
 
-  ThemeEngine.prototype.setTargetForState = function (state) {
-    this.currentState = state || 'idle';
-    this.currentScene = this.getSceneForState(this.currentState);
-    const slot = getSlot(this.runtime, this.currentScene.mainSlot, this.heroBase);
-    this.target = { x: slot.x, y: slot.y };
+  ThemeEngine.prototype.fitBackground = function (bg) {
+    if (!bg) return;
+    const scaleX = 1280 / bg.width;
+    const scaleY = 720 / bg.height;
+    bg.setScale(Math.max(scaleX, scaleY));
+  };
 
-    if (!this.currentScene.supportVisible) {
-      this.hideSupportActor();
+  ThemeEngine.prototype.playActorState = function (actor, actorDef, prefix, desiredState) {
+    if (!actor || !actorDef) return;
+    const desired = resolveStateAsset(actorDef, desiredState);
+    if (!desired) return;
+    const textureKey = makeStateTextureKey(prefix, actorDef.id, desired.state);
+    if (!this.scene.textures.exists(textureKey)) return;
+    if (actor.texture.key !== textureKey) actor.setTexture(textureKey, 0);
+    actor.setScale((typeof desired.asset.scale === 'number') ? desired.asset.scale : actorDef.scale);
+    const animKey = textureKey + '_anim';
+    if (this.scene.anims.exists(animKey)) {
+      if (!actor.anims.isPlaying || !actor.anims.currentAnim || actor.anims.currentAnim.key !== animKey) {
+        actor.anims.play(animKey, true);
+      }
     } else {
-      this.supportVisible = false;
-      if (this.supportActor) this.supportActor.setVisible(false);
-      this.activeSupportHeroId = this.currentScene.supportHero || null;
+      actor.anims.stop();
+      actor.setFrame(0);
     }
+  };
+
+  ThemeEngine.prototype.resolveHeroDef = function (heroId) {
+    if (heroId === this.runtime.mainHero.id) {
+      return { actorDef: this.runtime.mainHero, prefix: 'main' };
+    }
+    const support = this.runtime.supportHeroes[heroId];
+    if (!support) return null;
+    return { actorDef: support, prefix: 'support' };
+  };
+
+  ThemeEngine.prototype.getActorByHeroId = function (heroId) {
+    if (!heroId) return null;
+    if (heroId === this.getMainHeroId()) {
+      if (this.isChildSceneActive() && this.activeWorkerHeroId === heroId && this.childActor) return this.childActor;
+      return this.mainActor || null;
+    }
+    if (this.isChildSceneActive() && this.activeWorkerHeroId === heroId && this.childActor) return this.childActor;
+    return this.supportCast[heroId] || null;
+  };
+
+  ThemeEngine.prototype.getBaseScaleForHeroId = function (heroId) {
+    const resolved = this.resolveHeroDef(heroId);
+    if (!resolved || !resolved.actorDef) return 1.0;
+    if (heroId === this.getMainHeroId()) {
+      const mainNode = this.runtime.mainScene.cast[heroId];
+      const desiredState = mainNode && mainNode.animationState ? mainNode.animationState : 'idle_a';
+      const desired = resolveStateAsset(resolved.actorDef, desiredState) || resolveStateAsset(resolved.actorDef, 'idle_a');
+      return desired && typeof desired.asset.scale === 'number' ? desired.asset.scale : resolved.actorDef.scale;
+    }
+    const castNode = this.runtime.mainScene.cast[heroId];
+    const desiredState = castNode && castNode.animationState ? castNode.animationState : 'idle';
+    const desired = resolveStateAsset(resolved.actorDef, desiredState) || resolveStateAsset(resolved.actorDef, 'idle');
+    return desired && typeof desired.asset.scale === 'number' ? desired.asset.scale : resolved.actorDef.scale;
+  };
+
+  ThemeEngine.prototype.applyIdleEventEmphasis = function (heroId, options) {
+    const actor = this.getActorByHeroId(heroId);
+    if (!actor || this.sceneMode !== 'main_idle') return;
+    const opts = options || {};
+    const now = this.scene && this.scene.time ? this.scene.time.now : 0;
+    this.idleEventEmphasis[heroId] = {
+      tint: (opts.tint != null) ? Number(opts.tint) : 0xffe3a1,
+      scaleBoost: Math.max(1, Number(opts.scaleBoost || 1.06)),
+      expiresAt: now + Math.max(300, Number(opts.durationMs || 2600))
+    };
+    actor.clearTint();
+    actor.setTint(this.idleEventEmphasis[heroId].tint);
+  };
+
+  ThemeEngine.prototype.clearIdleEventEmphasis = function (heroId) {
+    if (!heroId) return;
+    delete this.idleEventEmphasis[heroId];
+    if (this.sceneMode !== 'main_idle') return;
+    const actor = this.getActorByHeroId(heroId);
+    if (!actor) return;
+    actor.clearTint();
+    actor.setScale(this.getBaseScaleForHeroId(heroId));
+  };
+
+  ThemeEngine.prototype.clearAllIdleEventEmphasis = function () {
+    const heroIds = Object.keys(this.idleEventEmphasis);
+    this.idleEventEmphasis = {};
+    heroIds.forEach((heroId) => {
+      const actor = this.getActorByHeroId(heroId);
+      if (!actor) return;
+      actor.clearTint();
+      if (this.sceneMode === 'main_idle') actor.setScale(this.getBaseScaleForHeroId(heroId));
+    });
+  };
+
+  ThemeEngine.prototype.getWorkerHeroIdForState = function (state) {
+    if (state === 'idle') return this.runtime.mainHero.id;
+    const subscene = this.runtime.subscenes[state];
+    return subscene ? subscene.actorId : this.runtime.mainHero.id;
+  };
+
+  ThemeEngine.prototype.getHandoffDurationForState = function (state) {
+    const subscene = this.runtime.subscenes[state];
+    return subscene ? Math.max(0, Number(subscene.handoffDurationMs || 0)) : 0;
+  };
+
+  ThemeEngine.prototype.switchBackground = function (textureKey) {
+    if (!this.bg || !this.scene.textures.exists(textureKey)) return;
+    if (this.bg.texture.key !== textureKey) this.bg.setTexture(textureKey);
+    this.fitBackground(this.bg);
+  };
+
+  ThemeEngine.prototype.setObjectListVisible = function (nodes, visible) {
+    safeArray(nodes).forEach((node) => {
+      if (!node) return;
+      node.setVisible(visible);
+    });
+  };
+
+  ThemeEngine.prototype.hideAllChildObjects = function () {
+    Object.keys(this.childObjectsByState).forEach((state) => {
+      this.setObjectListVisible(this.childObjectsByState[state], false);
+    });
+  };
+
+  ThemeEngine.prototype.resetMainCastVisuals = function (options) {
+    const opts = options || {};
+    const runtime = this.runtime;
+    const mainCast = runtime.mainScene.cast;
+
+    this.mainActor.setVisible(true);
+    this.mainActor.setAlpha(1);
+    this.mainActor.clearTint();
+    this.mainActor.setScale(runtime.mainHero.scale);
+    const mainNode = mainCast[runtime.mainHero.id];
+    if (mainNode) {
+      this.mainActor.setPosition(mainNode.x, mainNode.y);
+      this.mainActor.setDepth(typeof mainNode.depth === 'number' ? mainNode.depth : 240);
+      this.playActorState(this.mainActor, runtime.mainHero, 'main', mainNode.animationState || 'idle_a');
+    }
+
+    Object.keys(runtime.supportHeroes).forEach((heroId) => {
+      const heroDef = runtime.supportHeroes[heroId];
+      const actor = this.supportCast[heroId];
+      const castNode = mainCast[heroId];
+      if (!actor || !castNode) return;
+      actor.setVisible(true);
+      actor.setAlpha(1);
+      actor.clearTint();
+      if (!opts.preserveSupportPositions) {
+        actor.setPosition(castNode.x, castNode.y);
+      }
+      actor.setDepth(typeof castNode.depth === 'number' ? castNode.depth : heroDef.depth);
+      this.playActorState(actor, heroDef, 'support', castNode.animationState || 'idle');
+    });
+  };
+
+  ThemeEngine.prototype.enterMainIdle = function () {
+    this.clearAllIdleEventEmphasis();
+    this.sceneMode = 'main_idle';
+    this.currentState = 'idle';
+    this.activeWorkerHeroId = null;
+    this.handoffTargetHeroId = null;
+    this.currentSubscene = null;
+
+    this.switchBackground('scene_bg_main');
+    this.setObjectListVisible(this.mainObjects, true);
+    this.hideAllChildObjects();
+    this.childActor.setVisible(false);
+    this.childActor.anims.stop();
+    this.resetMainCastVisuals();
+
+    this.hero = this.mainActor;
+    this.heroBase = { x: this.mainActor.x, y: this.mainActor.y };
+    this.target = { x: this.mainActor.x, y: this.mainActor.y };
+    this.moving = false;
+    this.resetSupportRoaming(this.scene && this.scene.time ? this.scene.time.now : 0);
+  };
+
+  ThemeEngine.prototype.enterMainHandoff = function (state) {
+    this.clearAllIdleEventEmphasis();
+    const workerId = this.getWorkerHeroIdForState(state);
+    this.sceneMode = 'main_handoff';
+    this.currentState = state;
+    this.activeWorkerHeroId = workerId;
+    this.handoffTargetHeroId = workerId;
+    this.currentSubscene = null;
+
+    this.switchBackground('scene_bg_main');
+    this.setObjectListVisible(this.mainObjects, true);
+    this.hideAllChildObjects();
+    this.childActor.setVisible(false);
+    this.childActor.anims.stop();
+    this.resetMainCastVisuals({ preserveSupportPositions: true });
+
+    this.playActorState(this.mainActor, this.runtime.mainHero, 'main', 'idle_b');
+
+    const dimAlpha = (typeof this.runtime.mainScene.handoff.dimAlpha === 'number')
+      ? this.runtime.mainScene.handoff.dimAlpha
+      : 0.42;
+
+    Object.keys(this.supportCast).forEach((heroId) => {
+      const actor = this.supportCast[heroId];
+      if (!actor) return;
+      actor.clearTint();
+      actor.setAlpha(heroId === workerId ? 1 : dimAlpha);
+    });
+
+    if (workerId !== this.runtime.mainHero.id) {
+      this.mainActor.setAlpha(1);
+    }
+
+    const targetActor = workerId === this.runtime.mainHero.id
+      ? this.mainActor
+      : this.supportCast[workerId];
+    if (targetActor) {
+      targetActor.setAlpha(1);
+      targetActor.setTint(0xfff1a6);
+    }
+
+    this.hero = this.mainActor;
+    this.heroBase = { x: this.mainActor.x, y: this.mainActor.y };
+    this.target = { x: this.mainActor.x, y: this.mainActor.y };
+    this.moving = false;
+    this.setSupportRoamingEnabled(false, this.scene && this.scene.time ? this.scene.time.now : 0);
+  };
+
+  ThemeEngine.prototype.enterChildScene = function (state) {
+    this.clearAllIdleEventEmphasis();
+    if (state === 'idle') {
+      this.enterMainIdle();
+      return;
+    }
+
+    const subscene = this.runtime.subscenes[state];
+    if (!subscene) {
+      this.enterMainIdle();
+      return;
+    }
+
+    const resolved = this.resolveHeroDef(subscene.actorId);
+    if (!resolved) {
+      this.enterMainIdle();
+      return;
+    }
+
+    this.sceneMode = 'child_active';
+    this.currentState = state;
+    this.activeWorkerHeroId = subscene.actorId;
+    this.handoffTargetHeroId = null;
+    this.currentSubscene = state;
+
+    this.switchBackground('scene_bg_' + state);
+    this.setObjectListVisible(this.mainObjects, false);
+    this.hideAllChildObjects();
+    this.setObjectListVisible(this.childObjectsByState[state], true);
+
+    this.mainActor.setVisible(false);
+    Object.keys(this.supportCast).forEach((heroId) => {
+      const actor = this.supportCast[heroId];
+      if (actor) actor.setVisible(false);
+    });
+
+    this.childActor.setVisible(true);
+    this.childActor.setPosition(subscene.x, subscene.y);
+    this.childActor.setDepth(subscene.depth);
+    this.childActor.setOrigin(resolved.actorDef.origin.x, resolved.actorDef.origin.y);
+    this.playActorState(this.childActor, resolved.actorDef, resolved.prefix, subscene.animationState);
+
+    this.hero = this.childActor;
+    this.heroBase = { x: this.childActor.x, y: this.childActor.y };
+    this.target = { x: this.childActor.x, y: this.childActor.y };
+    this.moving = false;
+    this.setSupportRoamingEnabled(false, this.scene && this.scene.time ? this.scene.time.now : 0);
+  };
+
+  ThemeEngine.prototype.setTargetForState = function (state, options) {
+    const nextState = state || 'idle';
+    const opts = options || {};
+    const phase = opts.phase || (nextState === 'idle' ? 'main_idle' : 'child');
+
+    if (nextState === 'idle' || phase === 'main_idle') {
+      this.enterMainIdle();
+      return;
+    }
+    if (phase === 'handoff') {
+      this.enterMainHandoff(nextState);
+      return;
+    }
+    this.enterChildScene(nextState);
   };
 
   ThemeEngine.prototype.getMainRole = function () {
     return this.runtime.mainHero ? this.runtime.mainHero.role : null;
   };
 
+  ThemeEngine.prototype.getMainHeroId = function () {
+    return this.runtime.mainHero ? this.runtime.mainHero.id : null;
+  };
+
+  ThemeEngine.prototype.getCurrentWorkerHeroId = function () {
+    return this.activeWorkerHeroId || null;
+  };
+
+  ThemeEngine.prototype.isChildSceneActive = function () {
+    return this.sceneMode === 'child_active';
+  };
+
   ThemeEngine.prototype.getPreferredAudioRole = function () {
-    if (this.currentScene && this.currentScene.supportVisible && this.supportVisible && this.activeSupportHeroId) {
-      const heroDef = this.runtime.supportHeroes && this.runtime.supportHeroes[this.activeSupportHeroId];
-      if (heroDef && heroDef.role) return heroDef.role;
+    if (this.sceneMode === 'child_active' && this.activeWorkerHeroId) {
+      const resolved = this.resolveHeroDef(this.activeWorkerHeroId);
+      if (resolved && resolved.actorDef && resolved.actorDef.role) return resolved.actorDef.role;
     }
     return this.getMainRole();
   };
 
   ThemeEngine.prototype.getActiveSupportHeroId = function () {
-    return this.activeSupportHeroId || null;
+    if (!this.isChildSceneActive()) return null;
+    if (this.activeWorkerHeroId === this.getMainHeroId()) return null;
+    return this.activeWorkerHeroId || null;
   };
 
   ThemeEngine.prototype.hasVisibleSupportHero = function () {
-    return !!(this.supportVisible && this.supportActor && this.supportActor.visible);
+    return !!(this.isChildSceneActive() && this.getActiveSupportHeroId() && this.childActor && this.childActor.visible);
   };
 
   ThemeEngine.prototype.getActorForSpeaker = function (speaker) {
     if (speaker === 'support') {
-      if (this.hasVisibleSupportHero()) return this.supportActor;
+      if (this.hasVisibleSupportHero()) return this.childActor;
       return null;
+    }
+    if (this.isChildSceneActive() && this.activeWorkerHeroId === this.getMainHeroId()) {
+      return this.childActor || this.mainActor;
     }
     return this.mainActor || this.hero || null;
   };
 
-  ThemeEngine.prototype.hideSupportActor = function () {
-    this.supportVisible = false;
-    this.activeSupportHeroId = null;
-    if (!this.supportActor) return;
-    this.supportActor.setVisible(false);
-    this.supportActor.anims.stop();
+  ThemeEngine.prototype.getDebugSceneState = function () {
+    const countVisible = (nodes) => safeArray(nodes).filter((node) => node && node.visible).length;
+    const currentChildNodes = this.currentSubscene ? this.childObjectsByState[this.currentSubscene] : [];
+    const roamingDebug = {};
+    Object.keys(this.supportRoamingState).forEach((heroId) => {
+      const state = this.supportRoamingState[heroId];
+      if (!state) return;
+      roamingDebug[heroId] = {
+        baseX: Number(state.baseX.toFixed(2)),
+        baseY: Number(state.baseY.toFixed(2)),
+        target: state.target ? {
+          x: Number(state.target.x.toFixed(2)),
+          y: Number(state.target.y.toFixed(2))
+        } : null,
+        pauseUntil: Number(state.pauseUntil.toFixed(2)),
+        nextDecisionAt: Number(state.nextDecisionAt.toFixed(2)),
+        speedPxPerSec: Number(state.speedPxPerSec.toFixed(2)),
+        bounds: {
+          left: Number(state.bounds.left.toFixed(2)),
+          right: Number(state.bounds.right.toFixed(2)),
+          top: Number(state.bounds.top.toFixed(2)),
+          bottom: Number(state.bounds.bottom.toFixed(2))
+        }
+      };
+    });
+    return {
+      sceneMode: this.sceneMode,
+      currentSubscene: this.currentSubscene,
+      supportRoamingEnabled: this.supportRoamingEnabled,
+      supportRoamingDebug: roamingDebug,
+      mainObjectCount: safeArray(this.mainObjects).length,
+      visibleMainObjectCount: countVisible(this.mainObjects),
+      currentChildObjectCount: safeArray(currentChildNodes).length,
+      visibleChildObjectCount: countVisible(currentChildNodes)
+    };
   };
 
-  ThemeEngine.prototype.applyMainVisual = function () {
-    if (!this.mainActor) return;
-    const mainHero = this.runtime.mainHero;
-    const walkTextureKey = makeWalkTextureKey(mainHero.id);
-
-    if (this.moving && mainHero.walking && this.scene.textures.exists(walkTextureKey)) {
-      if (this.mainActor.texture.key !== walkTextureKey) this.mainActor.setTexture(walkTextureKey, 0);
-      this.mainActor.setScale(mainHero.scale);
-      const walkAnimKey = 'main_walk_' + mainHero.id;
-      if (this.scene.anims.exists(walkAnimKey) && (!this.mainActor.anims.isPlaying || this.mainActor.anims.currentAnim?.key !== walkAnimKey)) {
-        this.mainActor.anims.play(walkAnimKey, true);
-      }
-      return;
-    }
-
-    const desired = resolveStateAsset(mainHero, this.currentScene.mainAnimation || 'idle_a');
-    if (!desired) return;
-    const textureKey = makeStateTextureKey('main', mainHero.id, desired.state);
-    if (!this.scene.textures.exists(textureKey)) return;
-    if (this.mainActor.texture.key !== textureKey) this.mainActor.setTexture(textureKey, 0);
-    this.mainActor.setScale((typeof desired.asset.scale === 'number') ? desired.asset.scale : mainHero.scale);
-    const animKey = textureKey + '_anim';
-    if (this.scene.anims.exists(animKey)) {
-      if (!this.mainActor.anims.isPlaying || this.mainActor.anims.currentAnim?.key !== animKey) {
-        this.mainActor.anims.play(animKey, true);
-      }
-    } else {
-      this.mainActor.anims.stop();
-      this.mainActor.setFrame(0);
-    }
-  };
-
-  ThemeEngine.prototype.applySupportVisual = function () {
-    if (!this.supportActor || !this.currentScene || !this.currentScene.supportVisible || this.moving) {
-      if (this.supportActor) this.supportActor.setVisible(false);
-      this.supportVisible = false;
-      return;
-    }
-
-    const heroId = this.currentScene.supportHero;
-    const heroDef = heroId ? this.runtime.supportHeroes[heroId] : null;
-    if (!heroDef) {
-      this.supportActor.setVisible(false);
-      this.supportVisible = false;
-      return;
-    }
-
-    const desired = resolveStateAsset(heroDef, this.currentScene.supportAnimation || 'idle');
-    if (!desired) {
-      this.supportActor.setVisible(false);
-      this.supportVisible = false;
-      return;
-    }
-
-    const slot = getSlot(this.runtime, this.currentScene.supportSlot, this.heroBase);
-    const textureKey = makeStateTextureKey('support', heroDef.id, desired.state);
-    if (!this.scene.textures.exists(textureKey)) {
-      this.supportActor.setVisible(false);
-      this.supportVisible = false;
-      return;
-    }
-
-    this.activeSupportHeroId = heroId;
-    this.supportActor.setVisible(true);
-    this.supportActor.setPosition(slot.x, slot.y);
-    this.supportActor.setOrigin(heroDef.origin.x, heroDef.origin.y);
-    this.supportActor.setDepth(heroDef.depth);
-    this.supportActor.setScale((typeof desired.asset.scale === 'number') ? desired.asset.scale : heroDef.scale);
-    if (this.supportActor.texture.key !== textureKey) this.supportActor.setTexture(textureKey, 0);
-
-    const animKey = textureKey + '_anim';
-    if (this.scene.anims.exists(animKey)) {
-      if (!this.supportActor.anims.isPlaying || this.supportActor.anims.currentAnim?.key !== animKey) {
-        this.supportActor.anims.play(animKey, true);
-      }
-    } else {
-      this.supportActor.anims.stop();
-      this.supportActor.setFrame(0);
-    }
-
-    this.supportVisible = true;
-  };
-
-  ThemeEngine.prototype.setMoving = function (isMoving) {
-    this.moving = !!isMoving;
-  };
-
-  ThemeEngine.prototype.shouldApplyMainStateEffects = function () {
-    const scene = this.currentScene;
-    if (!scene || typeof scene !== 'object') return true;
-    // Legacy themes rely on main-hero tint/shake for syncing/error when no support hero exists.
-    if (scene.supportVisible === true && scene.supportHero) return false;
-    return true;
-  };
-
-  ThemeEngine.prototype.applyStateEffects = function (state, t) {
-    if (!this.mainActor) return;
-    if (!this.shouldApplyMainStateEffects()) {
-      this.mainActor.clearTint();
-      this.mainActor.x = this.heroBase.x;
-      this.mainActor.y = this.heroBase.y;
-      return;
-    }
-    const eff = getEffect(this.runtime, state);
-    if (eff.tint) this.mainActor.setTint(eff.tint); else this.mainActor.clearTint();
-
-    this.mainActor.x = this.heroBase.x;
-    this.mainActor.y = this.heroBase.y;
-
-    if (!this.moving) {
-      const shake = eff.shake || 0;
-      const bob = eff.bob || 0;
-      if (shake > 0) {
-        this.mainActor.x += Math.sin(t * 0.03) * shake;
-        this.mainActor.y += Math.cos(t * 0.025) * shake;
-      }
-      if (bob > 0) {
-        this.mainActor.y += Math.sin(t * 0.02) * bob;
-      }
-    }
-  };
-
-  ThemeEngine.prototype.update = function (time, delta, state) {
-    if (!this.mainActor) return;
-    if (state && state !== this.currentState) this.setTargetForState(state);
-
+  ThemeEngine.prototype.update = function (time, delta) {
     for (let i = this.objectBubbles.length - 1; i >= 0; i--) {
-      const b = this.objectBubbles[i];
-      if (b && b.t && time > b.t) {
-        if (b.node) b.node.destroy();
+      const bubble = this.objectBubbles[i];
+      if (bubble && bubble.t && time > bubble.t) {
+        if (bubble.node) bubble.node.destroy();
         this.objectBubbles.splice(i, 1);
       }
     }
 
-    const speed = 240;
-    const dx = this.target.x - this.heroBase.x;
-    const dy = this.target.y - this.heroBase.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (this.sceneMode === 'main_idle') {
+      Object.keys(this.idleEventEmphasis).forEach((heroId) => {
+        const emphasis = this.idleEventEmphasis[heroId];
+        const actor = this.getActorByHeroId(heroId);
+        if (!emphasis || !actor) {
+          delete this.idleEventEmphasis[heroId];
+          return;
+        }
+        if (time > emphasis.expiresAt) {
+          this.clearIdleEventEmphasis(heroId);
+          return;
+        }
+        const baseScale = this.getBaseScaleForHeroId(heroId);
+        const pulse = (Math.sin(time * 0.01) + 1) * 0.5;
+        actor.setScale(baseScale * (1 + (emphasis.scaleBoost - 1) * pulse));
+        actor.setTint(emphasis.tint);
+      });
 
-    if (dist > 2.0) {
-      if (dx < -1) this.mainActor.setFlipX(true);
-      if (dx > 1) this.mainActor.setFlipX(false);
-      this.setMoving(true);
-      const step = (speed * delta) / 1000.0;
-      const k = Math.min(1.0, step / dist);
-      this.heroBase.x += dx * k;
-      this.heroBase.y += dy * k;
-    } else {
-      this.heroBase.x = this.target.x;
-      this.heroBase.y = this.target.y;
-      this.setMoving(false);
+      this.updateSupportRoaming(time, delta);
     }
 
-    this.applyMainVisual();
-    this.applyStateEffects(this.currentState, time);
-    this.applySupportVisual();
+    if (this.sceneMode === 'main_handoff' && this.handoffTargetHeroId && this.handoffTargetHeroId !== this.runtime.mainHero.id) {
+      const actor = this.supportCast[this.handoffTargetHeroId];
+      const heroDef = this.runtime.supportHeroes[this.handoffTargetHeroId];
+      if (actor && heroDef) {
+        const baseScale = heroDef.states && heroDef.states.idle && typeof heroDef.states.idle.scale === 'number'
+          ? heroDef.states.idle.scale
+          : heroDef.scale;
+        const extraScale = (typeof this.runtime.mainScene.handoff.targetScale === 'number')
+          ? this.runtime.mainScene.handoff.targetScale
+          : 1.08;
+        actor.setScale(baseScale * (1 + (extraScale - 1) * ((Math.sin(time * 0.01) + 1) * 0.5)));
+      }
+    }
+
+    if (this.sceneMode === 'main_handoff' && this.handoffTargetHeroId === this.runtime.mainHero.id && this.mainActor) {
+      const desired = resolveStateAsset(this.runtime.mainHero, 'idle_b') || resolveStateAsset(this.runtime.mainHero, 'idle_a');
+      const baseScale = desired && typeof desired.asset.scale === 'number'
+        ? desired.asset.scale
+        : this.runtime.mainHero.scale;
+      const extraScale = (typeof this.runtime.mainScene.handoff.targetScale === 'number')
+        ? this.runtime.mainScene.handoff.targetScale
+        : 1.04;
+      this.mainActor.setScale(baseScale * (1 + (extraScale - 1) * ((Math.sin(time * 0.01) + 1) * 0.5)));
+    }
   };
+
+  if (typeof roamingApi.applyRoamingAPI === 'function') {
+    roamingApi.applyRoamingAPI(ThemeEngine);
+  }
 
   window.StarOfficeThemeEngine = {
     ThemeEngine: ThemeEngine,

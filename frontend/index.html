@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,49 +10,121 @@
   <header id="topbar">
     <div class="left">
       <div id="brand">Brotherhood-UI</div>
-      <button class="btn" id="coordsBtn" title="显示鼠标坐标/点击坐标复制">坐标: OFF</button>
-      <button class="btn" id="audioBtn" title="状态音效开关">音效: ON</button>
+      <button class="btn" id="coordsBtn" data-i18n-title="chrome.coords.title">座標: OFF</button>
+      <button class="btn" id="audioBtn" data-i18n-title="chrome.audio.title">音效: ON</button>
     </div>
     <div class="right">
       <div id="coordsText">x: -, y: -</div>
-      <div id="hintText">提示: 开启坐标后，点击画布复制坐标</div>
+      <div id="hintText" data-i18n="chrome.hint">提示: 開啟座標後，點擊畫布複製座標</div>
+      <div class="locale-switch">
+        <span class="locale-label" data-i18n="chrome.localeLabel">語言</span>
+        <div class="locale-buttons">
+          <button type="button" class="btn locale-btn" data-locale="zh-Hant">繁中</button>
+          <button type="button" class="btn locale-btn" data-locale="en">EN</button>
+        </div>
+      </div>
+      <button type="button" class="btn tools-btn" id="toolsToggle">
+        <span id="toolsToggleLabel" data-i18n="chrome.toolsOpen">工具</span>
+      </button>
     </div>
   </header>
+
+  <div id="toolsLayer" class="tools-layer" hidden>
+    <button type="button" id="toolsBackdrop" class="tools-backdrop" data-i18n-aria-label="chrome.toolsClose" aria-label="收起工具"></button>
+    <aside id="toolsDrawer" class="tools-drawer" aria-modal="false">
+      <div class="tools-drawer-head">
+        <div>
+          <div class="tools-title" data-i18n="chrome.toolsHeading">次要工具</div>
+          <div class="tools-subtitle" data-i18n="chrome.toolsSubheading">控制面板與昨日小記收在這裡，不佔主舞台高度。</div>
+        </div>
+        <button type="button" class="btn tools-close-btn" id="toolsCloseBtn" data-i18n="chrome.toolsClose">收起工具</button>
+      </div>
+
+      <div id="bottom-panels">
+        <section id="control-panel" class="panel collapsible-panel is-collapsed">
+          <button
+            type="button"
+            id="controlPanelToggle"
+            class="panel-toggle"
+            aria-expanded="false"
+            aria-controls="controlPanelBody"
+          >
+            <span class="panel-toggle-main">
+              <span class="panel-title" data-i18n="control.title">控制面板</span>
+              <span id="controlPanelSummary" class="panel-summary">當前：待命 · 無補充文案</span>
+            </span>
+            <span class="panel-toggle-hint">點擊展開</span>
+          </button>
+          <div id="controlPanelBody" class="panel-body" hidden>
+            <div class="field">
+              <label for="detailInput" data-i18n="control.detailLabel">文案</label>
+              <input id="detailInput" type="text" maxlength="80" data-i18n-placeholder="control.detailPlaceholder" placeholder="例如：正在寫文案..." />
+            </div>
+            <div id="stateButtons" class="grid"></div>
+            <div id="controlPanelHint" class="panel-hint" data-i18n="control.hint">點擊按鈕會呼叫後端 /set_state，頁面會自動更新。</div>
+          </div>
+        </section>
+
+        <section id="memo-panel" class="panel collapsible-panel is-collapsed">
+          <button
+            type="button"
+            id="memoPanelToggle"
+            class="panel-toggle"
+            aria-expanded="false"
+            aria-controls="memoPanelBody"
+          >
+            <span class="panel-toggle-main">
+              <span class="panel-title" data-i18n="memo.title">昨日小記</span>
+              <span id="memoPanelSummary" class="panel-summary">暫無昨日小記</span>
+            </span>
+            <span class="panel-toggle-hint">點擊展開</span>
+          </button>
+          <div id="memoPanelBody" class="panel-body" hidden>
+            <div id="memoMeta" class="mono muted" data-i18n="memo.loading">載入中...</div>
+            <pre id="memoText" class="memo"></pre>
+            <div id="memoError" class="mono error"></div>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </div>
 
   <main id="main">
     <div id="game-container"></div>
 
-    <div id="bottom-panels">
-      <section id="control-panel" class="panel">
-        <div class="panel-title">控制面板</div>
-        <div class="panel-body">
-          <div class="field">
-            <label for="detailInput">文案</label>
-            <input id="detailInput" type="text" maxlength="80" placeholder="例如：正在写文案..." />
+    <section id="status-board" class="status-board">
+      <section class="status-main">
+        <div class="status-board-top">
+          <div class="status-kicker" data-i18n="state.kicker">OPENCLAW 狀態帶</div>
+          <div id="statusMeta" class="status-meta">正在彙總堂前消息...</div>
+        </div>
+        <h2 id="statusHeadline" class="status-headline">堂前待命，尚未起令</h2>
+        <div id="statusStage" class="status-stage">舞台仍在主場景，宋江暫壓堂前。</div>
+        <div class="status-focus-block">
+          <div class="status-label" data-i18n="state.focusLabel">任務焦點</div>
+          <div id="statusFocus" class="status-focus">狀態聚合中...</div>
+        </div>
+      </section>
+      <aside class="status-side">
+        <section class="status-history-block">
+          <div class="status-label" data-i18n="state.historyLabel">最近過程</div>
+          <div id="statusHistory" class="status-history">
+            <div class="status-history-empty" data-i18n="state.historyEmpty">尚無過程記錄</div>
           </div>
-          <div id="stateButtons" class="grid"></div>
-          <div class="panel-hint">点击按钮会调用后端 `/set_state`，页面会自动更新。</div>
-        </div>
-      </section>
-
-      <section id="memo-panel" class="panel">
-        <div class="panel-title">昨日小记</div>
-        <div class="panel-body">
-          <div id="memoMeta" class="mono muted">加载中...</div>
-          <pre id="memoText" class="memo"></pre>
-          <div id="memoError" class="mono error"></div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </aside>
+      <footer class="status-foot">
+        <div class="status-line-label" data-i18n="state.footerLabel">即時回聲</div>
+        <div id="statusLine" class="status-line">[待命] 待命中</div>
+      </footer>
+    </section>
   </main>
 
-  <footer id="status-text">状态加载中...</footer>
-
   <div id="loading-overlay">
-    <div id="loading-title">加载 Brotherhood-UI 主题资源中...</div>
+    <div id="loading-title" data-i18n="loading.title">載入 Brotherhood-UI 主題中...</div>
     <div id="loading-progress-container"><div id="loading-progress-bar"></div></div>
-    <div id="loading-sub">
-      如果你第一次打开看到资源 404：请把你的素材放到 <code>frontend/themes/liangshan/</code>，然后刷新。
+    <div id="loading-sub" data-i18n-html="loading.sub">
+      如果你第一次打開看到資源 404：請把你的素材放到 <code>frontend/themes/liangshan/</code>，然後重新整理。
     </div>
     <div id="error-panel"></div>
   </div>
@@ -62,9 +134,19 @@
     window.SO_VERSION = '{{VERSION_TIMESTAMP}}';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="/static/js/app-i18n-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-theme-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-theme-roaming.js?v={{VERSION_TIMESTAMP}}"></script>
   <script src="/static/js/theme-engine.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-bootstrap-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-ui-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-audio-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-state-flow.js?v={{VERSION_TIMESTAMP}}"></script>
   <script src="/static/js/app-dialogue-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
   <script src="/static/js/app-dialogue-scheduler.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-status-feed-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-status-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
+  <script src="/static/js/app-scene-runtime.js?v={{VERSION_TIMESTAMP}}"></script>
   <script src="/static/js/panels/control.js?v={{VERSION_TIMESTAMP}}"></script>
   <script src="/static/js/panels/memo.js?v={{VERSION_TIMESTAMP}}"></script>
   <script src="/static/js/app.js?v={{VERSION_TIMESTAMP}}"></script>

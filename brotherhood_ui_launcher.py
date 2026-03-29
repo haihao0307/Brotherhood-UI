@@ -1,19 +1,29 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 import platform
 import subprocess
+import sys
 import threading
+import time
 import tkinter as tk
+import urllib.error
+import urllib.request
+import webbrowser
 from pathlib import Path
 from tkinter import messagebox, scrolledtext
+
+from python_runtime import get_runtime_python_command
 
 
 REPO_ROOT = Path(__file__).resolve().parent
 IS_WINDOWS = platform.system().lower().startswith("win")
-CLI_HELPER = REPO_ROOT / ("brotherhood-ui.bat" if IS_WINDOWS else "brotherhood-ui.sh")
+CONTROL_RUNTIME = REPO_ROOT / "brotherhood_control_runtime.py"
 ICON = REPO_ROOT / "logo.ico"
+DEFAULT_BOARD_PORT = 18791
+BOARD_PORT_FILE = REPO_ROOT / ".runtime" / "board-port.txt"
 
 
 def _adjust_hex_color(color: str, delta: int) -> str:
@@ -21,6 +31,53 @@ def _adjust_hex_color(color: str, delta: int) -> str:
     channels = [int(color[i : i + 2], 16) for i in range(0, 6, 2)]
     adjusted = [max(0, min(255, value + delta)) for value in channels]
     return "#" + "".join(f"{value:02x}" for value in adjusted)
+
+
+def get_launcher_action_plan(action: str) -> tuple[list[str], bool]:
+    normalized = (action or "").strip().lower()
+    if normalized == "auto":
+        return ["serve", "watch"], True
+    if normalized == "open":
+        return [], True
+    return [normalized], False
+
+
+def read_runtime_board_port(default_port: int = DEFAULT_BOARD_PORT) -> int:
+    try:
+        value = int(BOARD_PORT_FILE.read_text(encoding="utf-8").strip())
+        if 1 <= value <= 65535:
+            return value
+    except Exception:
+        pass
+    return default_port
+
+
+def get_local_board_url(port: int | None = None) -> str:
+    board_port = port if port is not None else read_runtime_board_port()
+    return f"http://127.0.0.1:{board_port}"
+
+
+def local_board_ready(url: str | None = None, timeout_seconds: int = 2) -> bool:
+    target_url = url or get_local_board_url()
+    try:
+        with urllib.request.urlopen(target_url.rstrip("/") + "/health", timeout=timeout_seconds) as response:
+            if response.status < 200 or response.status >= 300:
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+            return payload.get("app") == "Brotherhood-UI" and payload.get("status") == "ok"
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
+        return False
+
+
+def wait_for_local_board(timeout_seconds: int = 6, poll_interval_seconds: float = 0.5) -> str | None:
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        target_url = get_local_board_url()
+        if local_board_ready(target_url):
+            return target_url
+        if time.monotonic() >= deadline:
+            return None
+        time.sleep(poll_interval_seconds)
 
 
 class ColorButton(tk.Label):
@@ -184,35 +241,49 @@ class LauncherApp:
 
         self._set_busy(True)
         self.status_var.set(f"Running {action}...")
-        helper_name = CLI_HELPER.name
-        self._append_log(f"> {helper_name} {action}")
+        runtime_actions, open_local_board = get_launcher_action_plan(action)
 
         def worker() -> None:
             try:
-                if IS_WINDOWS:
-                    command = ["cmd", "/c", str(CLI_HELPER), action]
-                else:
-                    command = ["bash", str(CLI_HELPER), action]
-                completed = subprocess.run(
-                    command,
-                    cwd=str(REPO_ROOT),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    env={**os.environ, "PYTHONUTF8": "1"},
-                )
-                stdout = completed.stdout.strip()
-                stderr = completed.stderr.strip()
-                if stdout:
-                    self.root.after(0, lambda: self._append_log(stdout))
-                if stderr:
-                    self.root.after(0, lambda: self._append_log(stderr))
-                if completed.returncode == 0:
-                    self.root.after(0, lambda: self.status_var.set(success_status))
-                else:
-                    self.root.after(0, lambda: self.status_var.set(failure_status))
-                    self.root.after(0, lambda: messagebox.showerror("Brotherhood-UI Launcher", f"{action} failed."))
+                for runtime_action in runtime_actions:
+                    self.root.after(0, lambda runtime_action=runtime_action: self._append_log(f"> {CONTROL_RUNTIME.name} {runtime_action}"))
+                    command = get_runtime_python_command(
+                        REPO_ROOT,
+                        preferred_python=sys.executable,
+                        required_modules=("flask",),
+                    ) + [
+                        str(CONTROL_RUNTIME),
+                        runtime_action,
+                    ]
+                    completed = subprocess.run(
+                        command,
+                        cwd=str(REPO_ROOT),
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        env={**os.environ, "PYTHONUTF8": "1"},
+                    )
+                    stdout = completed.stdout.strip()
+                    stderr = completed.stderr.strip()
+                    if stdout:
+                        self.root.after(0, lambda stdout=stdout: self._append_log(stdout))
+                    if stderr:
+                        self.root.after(0, lambda stderr=stderr: self._append_log(stderr))
+                    if completed.returncode != 0:
+                        self.root.after(0, lambda: self.status_var.set(failure_status))
+                        self.root.after(0, lambda: messagebox.showerror("Brotherhood-UI Launcher", f"{action} failed."))
+                        return
+
+                if open_local_board:
+                    local_url = wait_for_local_board()
+                    target_url = local_url or get_local_board_url()
+                    opened = webbrowser.open(target_url)
+                    self.root.after(0, lambda target_url=target_url: self._append_log(f"Opened browser: {target_url}"))
+                    if not opened:
+                        self.root.after(0, lambda target_url=target_url: self._append_log(f"Open this URL manually: {target_url}"))
+
+                self.root.after(0, lambda: self.status_var.set(success_status))
             except Exception as exc:
                 self.root.after(0, lambda: self._append_log(str(exc)))
                 self.root.after(0, lambda: self.status_var.set(failure_status))
@@ -236,8 +307,8 @@ class LauncherApp:
 
 
 def main() -> int:
-    if not CLI_HELPER.exists():
-        messagebox.showerror("Brotherhood-UI Launcher", f"Missing file: {CLI_HELPER}")
+    if not CONTROL_RUNTIME.exists():
+        messagebox.showerror("Brotherhood-UI Launcher", f"Missing file: {CONTROL_RUNTIME}")
         return 1
 
     root = tk.Tk()

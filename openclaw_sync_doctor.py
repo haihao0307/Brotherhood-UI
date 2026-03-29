@@ -8,12 +8,17 @@ import os
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
+
+from state_coordinator import read_state_snapshot
 
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(PROJECT_ROOT, "state.json")
 SYNC_STATUS_FILE = os.path.join(PROJECT_ROOT, ".runtime", "openclaw-sync-status.json")
+DEFAULT_BOARD_PORT = 18791
+BOARD_PORT_FILE = Path(PROJECT_ROOT) / ".runtime" / "board-port.txt"
 DEFAULT_SESSIONS_JSON = os.path.join(
     os.path.expanduser("~"),
     ".openclaw",
@@ -38,8 +43,19 @@ def load_json(path: str) -> Any:
         return json.load(handle)
 
 
-def check_backend() -> tuple[bool, str]:
-    candidates = ["http://127.0.0.1:18791/health"]
+def read_board_port() -> int:
+    try:
+        value = int(BOARD_PORT_FILE.read_text(encoding="utf-8").strip())
+        if 1 <= value <= 65535:
+            return value
+    except Exception:
+        pass
+    return DEFAULT_BOARD_PORT
+
+
+def backend_url_candidates(port: int | None = None) -> list[str]:
+    board_port = port or read_board_port()
+    candidates = [f"http://127.0.0.1:{board_port}/health"]
     try:
         import socket
 
@@ -48,19 +64,26 @@ def check_backend() -> tuple[bool, str]:
             ip = result[4][0]
             if ip.startswith("127.") or ip.startswith("169.254.") or ip == "0.0.0.0":
                 continue
-            url = f"http://{ip}:18791/health"
+            url = f"http://{ip}:{board_port}/health"
             if url not in candidates:
                 candidates.append(url)
     except Exception:
         pass
+    return candidates
 
-    for url in candidates:
+
+def check_backend() -> tuple[bool, str]:
+    for url in backend_url_candidates():
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
                 if response.status != 200:
                     continue
                 payload = json.load(response)
-                if payload.get("app") == "Brotherhood-UI" and payload.get("status") == "ok":
+                if (
+                    payload.get("app") == "Brotherhood-UI"
+                    and payload.get("status") == "ok"
+                    and str(Path(payload.get("repoRoot", "")).resolve()).casefold() == str(Path(PROJECT_ROOT).resolve()).casefold()
+                ):
                     return True, url
         except urllib.error.URLError:
             continue
@@ -82,8 +105,10 @@ def main() -> int:
     print(f"Backend: {'OK' if ok else 'FAIL'} -> {backend_info}")
 
     if os.path.exists(STATE_FILE):
-        state = load_json(STATE_FILE)
+        state = read_state_snapshot()
         print(f"Board state: {state.get('state', 'unknown')} | {state.get('detail', '')}")
+        print(f"State source: {state.get('source', '-')}")
+        print(f"Request/seq: {state.get('request_id', '-')} / {state.get('sequence', '-')}")
     else:
         print("Board state: missing state.json")
 
@@ -114,8 +139,21 @@ def main() -> int:
         print(f"Sync watcher: {status_label}")
         print(f"Watcher started: {age_text(started_at)}")
         print(f"Watcher heartbeat: {age_text(heartbeat_at)}")
+        print(f"Active request: {sync_status.get('activeRequestId', 'n/a')}")
         print(f"Last bridge action: {sync_status.get('lastBridgeCommand', 'n/a')}")
         print(f"Last bridge value: {sync_status.get('lastBridgeValue', 'n/a')}")
+        print(f"Last phase signature: {sync_status.get('lastPhaseSignature', 'n/a')}")
+        print(f"Last phase time: {age_text(sync_status.get('lastPhaseAt'))}")
+        print(f"Observed phases: {sync_status.get('observedPhaseCount', 'n/a')}")
+        print(f"Pending tool calls: {sync_status.get('pendingToolCallCount', 'n/a')}")
+        print(f"Last observed tool: {sync_status.get('lastObservedToolName', 'n/a')}")
+        print(f"Last observed activity: {sync_status.get('lastObservedActivity', 'n/a')}")
+        print(f"Activity source: {sync_status.get('lastObservedActivitySource', 'n/a')}")
+        print(f"Protocol mode: {sync_status.get('protocolMode', 'n/a')}")
+        print(f"Protocol command: {sync_status.get('lastProtocolCommand', 'n/a')}")
+        print(f"Protocol version: {sync_status.get('protocolVersion', 'n/a')}")
+        print(f"Protocol path: {sync_status.get('protocolPath', 'n/a')}")
+        print(f"Ignored phase reason: {sync_status.get('lastIgnoredPhaseReason', 'n/a')}")
         print(f"Last error: {sync_status.get('lastError', '') or 'none'}")
     else:
         print(f"Sync watcher: FAIL -> missing {SYNC_STATUS_FILE}")
