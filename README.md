@@ -51,9 +51,15 @@ The project started from [ringhyacinth/Star-Office-UI](https://github.com/ringhy
 
 ### See It In Action
 
-| Main stage runtime | Launcher | Theme sync tool |
+**Main stage**
+
+![Main stage demo](./docs/media/demo-main.gif)
+
+**Child scenes**
+
+| Child scene A | Child scene B | Child scene C |
 | --- | --- | --- |
-| ![Main stage demo](./docs/media/demo-main.gif) | ![Launcher demo](./docs/media/demo-launcher.gif) | ![Theme sync demo](./docs/media/demo-sync.gif) |
+| ![Child scene A](./docs/media/demo-subscene-1.gif) | ![Child scene B](./docs/media/demo-subscene-2.gif) | ![Child scene C](./docs/media/demo-subscene-3.gif) |
 
 ### Compared With the Previous Public Version
 
@@ -390,9 +396,15 @@ Brotherhood-UI 是一個把 OpenClaw 工作流程轉成「梁山現場演出」�
 
 ### 演示
 
-| 主舞台 | Launcher | 主題同步工具 |
+**主舞台**
+
+![主舞台 demo](./docs/media/demo-main.gif)
+
+**子場景**
+
+| 子場景 A | 子場景 B | 子場景 C |
 | --- | --- | --- |
-| ![主舞台 demo](./docs/media/demo-main.gif) | ![Launcher demo](./docs/media/demo-launcher.gif) | ![主題同步 demo](./docs/media/demo-sync.gif) |
+| ![子場景 A demo](./docs/media/demo-subscene-1.gif) | ![子場景 B demo](./docs/media/demo-subscene-2.gif) | ![子場景 C demo](./docs/media/demo-subscene-3.gif) |
 
 ### 相比早期公開版本，現在最重要的差異
 
