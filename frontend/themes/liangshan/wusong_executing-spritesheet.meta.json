@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-03-11T18:28:37.042619",
+  "generatedAt": "2026-03-30T12:32:19.688557",
   "sourceType": "spritesheet_png",
   "sourcePath": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\wusong_executing-spritesheet.png",
-  "frameRate": 6,
+  "frameRate": 8,
   "frameWidth": 256,
   "frameHeight": 256,
-  "frames": 21,
+  "frames": 16,
   "sheetWidth": 4096,
-  "sheetHeight": 512,
+  "sheetHeight": 256,
   "output": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\wusong_executing-spritesheet.png",
   "frameFiles": null
 }

@@ -1,0 +1,65 @@
+[
+  {
+    "task": "写一版超短文案",
+    "expected_state": "writing",
+    "expected_rule": "写文案 / 写说明 / 写总结"
+  },
+  {
+    "task": "先研究这个产品最适合展示的两个亮点",
+    "expected_state": "researching"
+  },
+  {
+    "task": "把这次 demo 的交付内容同步一下",
+    "expected_state": "syncing"
+  },
+  {
+    "task": "现在开始实现这支 demo 的展示流程",
+    "expected_state": "executing"
+  },
+  {
+    "task": "我想写一句产品定位",
+    "expected_state": "writing"
+  },
+  {
+    "task": "整理一份发布说明",
+    "expected_state": "syncing"
+  },
+  {
+    "task": "先分析一下这次宣传片怎么讲",
+    "expected_state": "researching"
+  },
+  {
+    "task": "帮我梳理两个亮点",
+    "expected_state": "researching"
+  },
+  {
+    "task": "录屏宣传片里最适合展示的两个亮点",
+    "expected_state": "researching"
+  },
+  {
+    "task": "帮我截个图",
+    "expected_state": "executing",
+    "expected_rule": "截图 / 录屏 / 截取窗口 / 保存到剪贴板"
+  },
+  {
+    "task": "提交一下这个表单",
+    "expected_state": "syncing"
+  },
+  {
+    "task": "把这些信息填进表单",
+    "expected_state": "syncing"
+  },
+  {
+    "task": "发个 PR",
+    "expected_state": "syncing",
+    "expected_rule": "Git / 分支 / 合并 / 提交"
+  },
+  {
+    "task": "页面卡住了",
+    "expected_state": "error"
+  },
+  {
+    "task": "完全未知的模糊请求",
+    "expect_match": false
+  }
+]

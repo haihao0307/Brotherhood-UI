@@ -101,6 +101,14 @@ def extract_tool_calls(content: Any) -> list[dict[str, Any]]:
     return calls
 
 
+def extract_tool_result_call_id(message: Any, record: dict[str, Any]) -> Any:
+    if isinstance(message, dict):
+        tool_call_id = message.get("toolCallId")
+        if isinstance(tool_call_id, str) and tool_call_id.strip():
+            return tool_call_id
+    return record.get("parentId")
+
+
 def clean_user_text(raw_text: str) -> str:
     text = raw_text.strip()
     text = SENDER_BLOCK_RE.sub("", text)
@@ -547,7 +555,7 @@ class OpenClawSessionWatcher:
                 return
 
         if role == "toolResult" and record.get("isError") is True:
-            self.clear_tool_call_pending(record.get("parentId"))
+            self.clear_tool_call_pending(extract_tool_result_call_id(message, record))
             if not self.state.active_request_id:
                 return
             error_text_blocks = extract_text_blocks(message.get("content"))
@@ -561,7 +569,7 @@ class OpenClawSessionWatcher:
             return
 
         if role == "toolResult":
-            self.clear_tool_call_pending(record.get("parentId"))
+            self.clear_tool_call_pending(extract_tool_result_call_id(message, record))
 
     def process_custom(self, record: dict[str, Any]) -> None:
         custom_type = record.get("customType")

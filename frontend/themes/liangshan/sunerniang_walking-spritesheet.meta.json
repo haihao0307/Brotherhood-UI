@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-03-23T18:59:22",
+  "generatedAt": "2026-03-30T12:08:50.657864",
   "sourceType": "spritesheet_png",
-  "sourcePath": "placeholder://sunerniang_walking",
-  "frameRate": 5,
+  "sourcePath": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\sunerniang_walking-spritesheet.png",
+  "frameRate": 8,
   "frameWidth": 256,
   "frameHeight": 256,
-  "frames": 6,
-  "sheetWidth": 1536,
+  "frames": 16,
+  "sheetWidth": 4096,
   "sheetHeight": 256,
   "output": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\sunerniang_walking-spritesheet.png",
   "frameFiles": null

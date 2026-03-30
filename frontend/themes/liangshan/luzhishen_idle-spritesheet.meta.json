@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-03-11T19:16:47.884981",
+  "generatedAt": "2026-03-29T18:07:04.585629",
   "sourceType": "spritesheet_png",
-  "sourcePath": "placeholder://luzhishen_idle",
-  "frameRate": 6,
+  "sourcePath": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\luzhishen_idle-spritesheet.png",
+  "frameRate": 8,
   "frameWidth": 256,
   "frameHeight": 256,
-  "frames": 6,
-  "sheetWidth": 1536,
+  "frames": 16,
+  "sheetWidth": 4096,
   "sheetHeight": 256,
-  "output": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\luzhishen_error-spritesheet.png",
+  "output": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\luzhishen_idle-spritesheet.png",
   "frameFiles": null
 }

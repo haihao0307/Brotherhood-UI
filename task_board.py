@@ -115,10 +115,10 @@ def command_start(
     payload = dict(snapshot)
     payload.update(
         {
-            "state": "researching",
-            "detail": "宋江正在統籌局勢，先梳理任務需求",
+            "state": "idle",
+            "detail": "宋江暂时按兵不动，等待更明确指令",
             "hero": "宋江",
-            "task_board_reason": "route_fallback_researching",
+            "task_board_reason": "route_fallback_idle",
             "task_text": task_text,
             "updated_at": datetime.now().isoformat(),
         }
@@ -129,9 +129,9 @@ def command_start(
         event_type="start",
         request_id=request_id,
         sequence=1,
-        reason="route_fallback_researching",
+        reason="route_fallback_idle",
     )
-    print("start -> researching (fallback)")
+    print("start -> idle (fallback)")
     print(f"detail -> {snapshot['detail']}")
     print(f"request -> {snapshot.get('request_id', '-')}")
     return 0

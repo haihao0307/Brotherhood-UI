@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-03-23T18:59:22",
+  "generatedAt": "2026-03-29T18:09:38.512725",
   "sourceType": "spritesheet_png",
-  "sourcePath": "placeholder://wuyong_walking",
-  "frameRate": 5,
+  "sourcePath": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\wuyong_walking-spritesheet.png",
+  "frameRate": 8,
   "frameWidth": 256,
   "frameHeight": 256,
-  "frames": 6,
-  "sheetWidth": 1536,
-  "sheetHeight": 256,
+  "frames": 33,
+  "sheetWidth": 4096,
+  "sheetHeight": 768,
   "output": "E:\\Codex Projects\\Brotherhood-UI\\frontend\\themes\\liangshan\\wuyong_walking-spritesheet.png",
   "frameFiles": null
 }
