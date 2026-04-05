@@ -550,82 +550,85 @@
         appState.audioManager.setRole(role);
         if (!appState.pendingAudioState) appState.audioManager.ensureForState(appState.currentState || 'idle');
       },
-      getDebugState: () => ({
-        currentState: appState.currentState,
-        workflowState: appState.workflowState,
-        scenePhase: appState.scenePhase,
-        dialogueMode: appState.dialogueMode,
-        currentDetail: appState.currentDetail,
-        requestedState: appState.requestedState,
-        requestedDetail: appState.requestedDetail,
-        pendingTransition: appState.pendingTransition ? {
-          state: appState.pendingTransition.state || null,
-          detail: appState.pendingTransition.detail || '',
-          readyAt: Number(appState.pendingTransition.readyAt || 0),
-          remainingMs: Math.max(0, Number(appState.pendingTransition.readyAt || 0) - Date.now()),
-          token: appState.pendingTransition.token || null,
-          timerArmed: !!appState.pendingTransitionTimerId
-        } : null,
-        stateGateTimerArmed: !!appState.stateGateTimerId,
-        scenePhaseChangedAt: Number(appState.scenePhaseChangedAt || 0),
-        childSceneEnteredAt: Number(appState.childSceneEnteredAt || 0),
-        idleSceneEnteredAt: Number(appState.idleSceneEnteredAt || 0),
-        bubbleVisible: !!(appState.bubble && appState.bubble.container),
-        bubbleHeroId: appState.bubble ? (appState.bubble.heroId || null) : null,
-        bubbleSpeaker: appState.bubble ? (appState.bubble.speaker || null) : null,
-        bubbleDebug: appState.bubble ? {
-          heroId: appState.bubble.heroId || null,
-          speaker: appState.bubble.speaker || null,
-          renderMode: appState.bubble.domNode ? 'dom' : 'canvas',
-          domVisible: !!(appState.bubble.domNode && appState.bubble.domNode.isConnected),
-          textStyle: appState.bubble.textStyle ? { ...appState.bubble.textStyle } : null,
-          text: appState.bubble.debugLayout ? appState.bubble.debugLayout.text : '',
-          anchorX: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.anchorX || 0) : 0,
-          anchorY: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.anchorY || 0) : 0,
-          domLeft: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domLeft || 0) : 0,
-          domTop: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domTop || 0) : 0,
-          domWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domWidth || 0) : 0,
-          domHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domHeight || 0) : 0,
-          bubbleWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleWidth || 0) : 0,
-          bubbleHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleHeight || 0) : 0,
-          textWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textWidth || 0) : 0,
-          textHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textHeight || 0) : 0,
-          lineCount: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.lineCount || 0) : 0,
-          textFits: appState.bubble.debugLayout ? !!appState.bubble.debugLayout.textFits : false
-        } : null,
-        activeIdleEventHeroId: appState.activeIdleEventHeroId || null,
-        idleRandomEventTimerArmed: !!appState.idleRandomEventTimerId,
-        idleRandomEventPoolSize: (() => {
-          const cfg = getIdleRandomEventConfig(appState.themeConfig);
-          return cfg && Array.isArray(cfg.pool) ? cfg.pool.length : 0;
-        })(),
-        initialIdleRandomSeedPending: !!appState.initialIdleRandomSeedPending,
-        supportRoamingUnlocked: !!appState.supportRoamingUnlocked,
-        mainDialogueTimerArmed: !!appState.mainDialogueTimerId,
-        supportDialogueTimerArmed: !!appState.supportDialogueTimerId,
-        sceneMode: appState.engine ? appState.engine.sceneMode : null,
-        currentWorkerHeroId: (appState.engine && typeof appState.engine.getCurrentWorkerHeroId === 'function')
-          ? appState.engine.getCurrentWorkerHeroId()
-          : null,
-        supportCastDebug: (() => {
-          if (!appState.engine || !appState.engine.supportCast) return {};
-          const out = {};
-          Object.keys(appState.engine.supportCast).forEach((heroId) => {
-            const actor = appState.engine.supportCast[heroId];
-            if (!actor) return;
-            out[heroId] = {
-              x: Number(actor.x.toFixed(2)),
-              y: Number(actor.y.toFixed(2)),
-              visible: !!actor.visible,
-              animKey: actor.anims && actor.anims.currentAnim ? actor.anims.currentAnim.key : null
-            };
-          });
-          return out;
-        })(),
-        sceneObjectDebug: (appState.engine && typeof appState.engine.getDebugSceneState === 'function')
+      getDebugState: () => {
+        const sceneObjectDebug = (appState.engine && typeof appState.engine.getDebugSceneState === 'function')
           ? appState.engine.getDebugSceneState()
-          : null
-      })
+          : null;
+        return {
+          currentState: appState.currentState,
+          workflowState: appState.workflowState,
+          scenePhase: appState.scenePhase,
+          dialogueMode: appState.dialogueMode,
+          currentDetail: appState.currentDetail,
+          requestedState: appState.requestedState,
+          requestedDetail: appState.requestedDetail,
+          pendingTransition: appState.pendingTransition ? {
+            state: appState.pendingTransition.state || null,
+            detail: appState.pendingTransition.detail || '',
+            readyAt: Number(appState.pendingTransition.readyAt || 0),
+            remainingMs: Math.max(0, Number(appState.pendingTransition.readyAt || 0) - Date.now()),
+            token: appState.pendingTransition.token || null,
+            timerArmed: !!appState.pendingTransitionTimerId
+          } : null,
+          stateGateTimerArmed: !!appState.stateGateTimerId,
+          scenePhaseChangedAt: Number(appState.scenePhaseChangedAt || 0),
+          childSceneEnteredAt: Number(appState.childSceneEnteredAt || 0),
+          idleSceneEnteredAt: Number(appState.idleSceneEnteredAt || 0),
+          bubbleVisible: !!(appState.bubble && appState.bubble.container),
+          bubbleHeroId: appState.bubble ? (appState.bubble.heroId || null) : null,
+          bubbleSpeaker: appState.bubble ? (appState.bubble.speaker || null) : null,
+          bubbleDebug: appState.bubble ? {
+            heroId: appState.bubble.heroId || null,
+            speaker: appState.bubble.speaker || null,
+            renderMode: appState.bubble.domNode ? 'dom' : 'canvas',
+            domVisible: !!(appState.bubble.domNode && appState.bubble.domNode.isConnected),
+            textStyle: appState.bubble.textStyle ? { ...appState.bubble.textStyle } : null,
+            text: appState.bubble.debugLayout ? appState.bubble.debugLayout.text : '',
+            anchorX: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.anchorX || 0) : 0,
+            anchorY: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.anchorY || 0) : 0,
+            domLeft: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domLeft || 0) : 0,
+            domTop: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domTop || 0) : 0,
+            domWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domWidth || 0) : 0,
+            domHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.domHeight || 0) : 0,
+            bubbleWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleWidth || 0) : 0,
+            bubbleHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.bubbleHeight || 0) : 0,
+            textWidth: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textWidth || 0) : 0,
+            textHeight: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.textHeight || 0) : 0,
+            lineCount: appState.bubble.debugLayout ? Number(appState.bubble.debugLayout.lineCount || 0) : 0,
+            textFits: appState.bubble.debugLayout ? !!appState.bubble.debugLayout.textFits : false
+          } : null,
+          activeIdleEventHeroId: appState.activeIdleEventHeroId || null,
+          idleRandomEventTimerArmed: !!appState.idleRandomEventTimerId,
+          idleRandomEventPoolSize: (() => {
+            const cfg = getIdleRandomEventConfig(appState.themeConfig);
+            return cfg && Array.isArray(cfg.pool) ? cfg.pool.length : 0;
+          })(),
+          initialIdleRandomSeedPending: !!appState.initialIdleRandomSeedPending,
+          supportRoamingUnlocked: !!appState.supportRoamingUnlocked,
+          mainDialogueTimerArmed: !!appState.mainDialogueTimerId,
+          supportDialogueTimerArmed: !!appState.supportDialogueTimerId,
+          sceneMode: appState.engine ? appState.engine.sceneMode : null,
+          currentWorkerHeroId: (appState.engine && typeof appState.engine.getCurrentWorkerHeroId === 'function')
+            ? appState.engine.getCurrentWorkerHeroId()
+            : null,
+          supportCastDebug: (() => {
+            if (!appState.engine || !appState.engine.supportCast) return {};
+            const out = {};
+            Object.keys(appState.engine.supportCast).forEach((heroId) => {
+              const actor = appState.engine.supportCast[heroId];
+              if (!actor) return;
+              out[heroId] = {
+                x: Number(actor.x.toFixed(2)),
+                y: Number(actor.y.toFixed(2)),
+                visible: !!actor.visible,
+                animKey: actor.anims && actor.anims.currentAnim ? actor.anims.currentAnim.key : null
+              };
+            });
+            return out;
+          })(),
+          sceneObjectDebug: sceneObjectDebug
+        };
+      }
     };
   }
 

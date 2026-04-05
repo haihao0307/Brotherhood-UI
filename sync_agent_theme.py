@@ -6,7 +6,9 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -30,6 +32,14 @@ PROP_SCENE_SCOPES = [
     ("syncing", "Syncing subscene"),
     ("error", "Error subscene"),
 ]
+FRONT_OVERLAY_SCENES = [
+    ("main", "Main scene", "props/main/front", None),
+    ("researching", "researching", "subscenes/sunerniang_researching/front", "researching"),
+    ("writing", "writing", "subscenes/wuyong_writing/front", "writing"),
+    ("executing", "executing", "subscenes/wusong_executing/front", "executing"),
+    ("syncing", "syncing", "subscenes/linchong_syncing/front", "syncing"),
+    ("error", "error", "subscenes/luzhishen_error/front", "error"),
+]
 
 
 def natural_sort_key(value: str) -> List[object]:
@@ -38,6 +48,22 @@ def natural_sort_key(value: str) -> List[object]:
     for part in parts:
         result.append(int(part) if part.isdigit() else part)
     return result
+
+
+def get_front_overlay_target(theme_json_path: Path, scene_key: str) -> dict:
+    normalized = (scene_key or "").strip().lower()
+    for owner, label, frames_path, subscene_key in FRONT_OVERLAY_SCENES:
+        if normalized not in {owner, label.strip().lower()}:
+            continue
+        theme_root = theme_json_path.resolve().parent
+        return {
+            "owner": owner,
+            "label": label,
+            "framesPath": frames_path,
+            "folder": theme_root / Path(frames_path),
+            "subsceneKey": subscene_key,
+        }
+    raise ValueError(f"unsupported front overlay scene: {scene_key}")
 
 
 def list_png_frames(input_dir: Path, pattern: str = "*.png") -> List[Path]:
@@ -619,6 +645,45 @@ def save_theme(theme_json_path: Path, theme: dict) -> None:
         f.write("\n")
 
 
+def inspect_front_overlay_folder(folder: Path, *, expected_frame_count: int) -> dict:
+    if expected_frame_count <= 0:
+        raise ValueError("Frame count must be a positive integer.")
+    if not folder.exists():
+        raise FileNotFoundError(f"Overlay folder not found: {folder}")
+    if not folder.is_dir():
+        raise NotADirectoryError(f"Expected overlay folder, got file: {folder}")
+
+    frame_paths = sorted([path for path in folder.glob("*.png") if path.is_file()], key=lambda path: natural_sort_key(path.name))
+    if not frame_paths:
+        raise ValueError(f"No overlay PNG frames found in {folder}")
+
+    expected_names = [f"Front_{index:03d}.png" for index in range(1, len(frame_paths) + 1)]
+    actual_names = [path.name for path in frame_paths]
+    if actual_names != expected_names:
+        for index, expected_name in enumerate(expected_names):
+            if index >= len(actual_names) or actual_names[index] != expected_name:
+                found_name = actual_names[index] if index < len(actual_names) else "nothing"
+                raise ValueError(f"Missing or misnamed frame: expected {expected_name}, found {found_name}")
+
+    if len(frame_paths) != expected_frame_count:
+        raise ValueError(f"Frame count mismatch: folder has {len(frame_paths)} frame(s), expected {expected_frame_count}")
+
+    bad_sizes: List[str] = []
+    for frame_path in frame_paths:
+        with Image.open(frame_path) as img:
+            if img.size != (1280, 720):
+                bad_sizes.append(f"{frame_path.name} => {img.size[0]}x{img.size[1]}")
+    if bad_sizes:
+        raise ValueError("Overlay frames must be 1280x720: " + ", ".join(bad_sizes))
+
+    return {
+        "folder": str(folder),
+        "frameCount": len(frame_paths),
+        "frameNames": actual_names,
+        "fpsSafeDefault": 10,
+    }
+
+
 def strip_spritesheet_suffix(stem: str) -> str:
     for suffix in ("-spritesheet", "_spritesheet", " spritesheet"):
         if stem.endswith(suffix):
@@ -960,6 +1025,76 @@ def sync_theme_json(
     }
 
 
+def sync_front_overlay_config(*, theme_json_path: Path, scene_key: str, frame_count: int, fps: int) -> dict:
+    if frame_count <= 0:
+        raise ValueError("Frame count must be a positive integer.")
+    if fps <= 0:
+        raise ValueError("FPS must be a positive integer.")
+
+    target = get_front_overlay_target(theme_json_path, scene_key)
+    theme = load_theme(theme_json_path)
+    overlay = {
+        "enabled": True,
+        "framesPath": target["framesPath"],
+        "filePattern": "Front_{index}.png",
+        "startIndex": 1,
+        "zeroPad": 3,
+        "frameCount": int(frame_count),
+        "fps": int(fps),
+        "loop": True,
+        "depth": 5000,
+    }
+
+    if target["owner"] == "main":
+        theme.setdefault("mainScene", {})["frontOverlay"] = overlay
+    else:
+        subscene_key = target["subsceneKey"]
+        subscenes = theme.setdefault("subscenes", {})
+        if subscene_key not in subscenes or not isinstance(subscenes[subscene_key], dict):
+            raise ValueError(f"Subscene not found in theme.json: {subscene_key}")
+        subscenes[subscene_key]["frontOverlay"] = overlay
+
+    save_theme(theme_json_path, theme)
+    return {
+        "sceneKey": target["owner"],
+        "framesPath": target["framesPath"],
+        "frameCount": int(frame_count),
+        "fps": int(fps),
+    }
+
+
+def remove_front_overlay_config(*, theme_json_path: Path, scene_key: str) -> dict:
+    target = get_front_overlay_target(theme_json_path, scene_key)
+    theme = load_theme(theme_json_path)
+    deleted_png_count = 0
+
+    if target["owner"] == "main":
+        main_scene = theme.setdefault("mainScene", {})
+        if isinstance(main_scene, dict):
+            main_scene.pop("frontOverlay", None)
+    else:
+        subscene_key = target["subsceneKey"]
+        subscenes = theme.setdefault("subscenes", {})
+        if subscene_key not in subscenes or not isinstance(subscenes[subscene_key], dict):
+            raise ValueError(f"Subscene not found in theme.json: {subscene_key}")
+        subscenes[subscene_key].pop("frontOverlay", None)
+
+    folder = target["folder"]
+    if folder.exists() and folder.is_dir():
+        for png_path in sorted(folder.glob("*.png"), key=lambda path: natural_sort_key(path.name)):
+            if not png_path.is_file():
+                continue
+            png_path.unlink()
+            deleted_png_count += 1
+
+    save_theme(theme_json_path, theme)
+    return {
+        "sceneKey": target["owner"],
+        "folder": str(folder),
+        "deletedPngCount": deleted_png_count,
+    }
+
+
 def inspect_input(
     input_path: Path,
     pattern: str = "*.png",
@@ -1113,8 +1248,8 @@ def launch_gui() -> int:
 
     root = tk.Tk()
     root.title("Spritesheet Sync Tool")
-    root.geometry("1080x860")
-    root.minsize(980, 760)
+    root.geometry("1080x1040")
+    root.minsize(980, 900)
 
     source_mode = tk.StringVar(value="folder")
     source_path_var = tk.StringVar(value="")
@@ -1136,6 +1271,11 @@ def launch_gui() -> int:
     duplicate_count_var = tk.StringVar(value="1")
     instance_label_var = tk.StringVar(value="")
     scene_scope_var = tk.StringVar(value="main")
+    front_overlay_scene_var = tk.StringVar(value="Main scene")
+    front_overlay_frame_count_var = tk.StringVar(value="")
+    front_overlay_fps_var = tk.StringVar(value="10")
+    front_overlay_folder_var = tk.StringVar(value="")
+    front_overlay_status_var = tk.StringVar(value="Choose a scene to prepare its overlay folder.")
 
     status_var = tk.StringVar(value="Select a source, then build and optionally sync theme.json.")
 
@@ -1229,6 +1369,116 @@ def launch_gui() -> int:
         path = filedialog.askopenfilename(title="Select theme.json", filetypes=[("JSON", "*.json"), ("All files", "*.*")])
         if path:
             theme_json_var.set(path)
+            update_front_overlay_folder()
+
+    def update_front_overlay_folder() -> dict | None:
+        try:
+            theme_path = Path(theme_json_var.get().strip() or DEFAULT_THEME_JSON)
+            target = get_front_overlay_target(theme_path, front_overlay_scene_var.get())
+            target["folder"].mkdir(parents=True, exist_ok=True)
+            front_overlay_folder_var.set(str(target["folder"]))
+            front_overlay_status_var.set(f"Target folder ready: {target['folder']}")
+            return target
+        except Exception as exc:
+            front_overlay_folder_var.set("")
+            front_overlay_status_var.set(str(exc))
+            return None
+
+    def open_front_overlay_folder() -> None:
+        target = update_front_overlay_folder()
+        if not target:
+            messagebox.showerror("Open folder failed", front_overlay_status_var.get())
+            return
+        folder = target["folder"]
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(str(folder))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(folder)])
+            else:
+                subprocess.Popen(["xdg-open", str(folder)])
+        except Exception as exc:
+            messagebox.showerror("Open folder failed", str(exc))
+            log(f"Open folder failed: {exc}")
+            return
+        log(f"Opened front overlay folder: {folder}")
+
+    def inspect_front_overlay_now() -> dict | None:
+        target = update_front_overlay_folder()
+        if not target:
+            messagebox.showerror("Inspect failed", front_overlay_status_var.get())
+            return None
+        try:
+            expected_frame_count = int(front_overlay_frame_count_var.get().strip())
+            result = inspect_front_overlay_folder(target["folder"], expected_frame_count=expected_frame_count)
+        except Exception as exc:
+            front_overlay_status_var.set(str(exc))
+            messagebox.showerror("Inspect failed", str(exc))
+            log(f"Front overlay inspect failed: {exc}")
+            return None
+        front_overlay_status_var.set(f"OK: {result['frameCount']} frame(s) ready in {result['folder']}")
+        log(front_overlay_status_var.get())
+        return result
+
+    def sync_front_overlay_now() -> None:
+        inspection = inspect_front_overlay_now()
+        if not inspection:
+            return
+        try:
+            result = sync_front_overlay_config(
+                theme_json_path=Path(theme_json_var.get().strip() or DEFAULT_THEME_JSON),
+                scene_key=front_overlay_scene_var.get(),
+                frame_count=int(front_overlay_frame_count_var.get().strip()),
+                fps=int(front_overlay_fps_var.get().strip()),
+            )
+        except Exception as exc:
+            front_overlay_status_var.set(str(exc))
+            messagebox.showerror("Sync failed", str(exc))
+            log(f"Front overlay sync failed: {exc}")
+            return
+        front_overlay_status_var.set(
+            f"Synced front overlay: {result['sceneKey']} / {result['frameCount']} frames / {result['fps']} fps"
+        )
+        log(front_overlay_status_var.get())
+        messagebox.showinfo("Front Overlay Synced", front_overlay_status_var.get())
+
+    def remove_front_overlay_now() -> None:
+        target = update_front_overlay_folder()
+        if not target:
+            messagebox.showerror("Remove failed", front_overlay_status_var.get())
+            return
+        confirmed = messagebox.askyesno(
+            "Remove Front Overlay",
+            "\n".join(
+                [
+                    f"Scene: {target['label']}",
+                    f"Folder: {target['folder']}",
+                    "",
+                    "This will:",
+                    "- remove frontOverlay from theme.json",
+                    "- delete all PNG frames in this folder",
+                ]
+            ),
+        )
+        if not confirmed:
+            front_overlay_status_var.set(f"Canceled front overlay removal: {target['label']}")
+            log(front_overlay_status_var.get())
+            return
+        try:
+            result = remove_front_overlay_config(
+                theme_json_path=Path(theme_json_var.get().strip() or DEFAULT_THEME_JSON),
+                scene_key=front_overlay_scene_var.get(),
+            )
+        except Exception as exc:
+            front_overlay_status_var.set(str(exc))
+            messagebox.showerror("Remove failed", str(exc))
+            log(f"Front overlay removal failed: {exc}")
+            return
+        front_overlay_status_var.set(
+            f"Removed front overlay: {result['sceneKey']} / deleted {result['deletedPngCount']} PNG frame(s)"
+        )
+        log(front_overlay_status_var.get())
+        messagebox.showinfo("Front Overlay Removed", front_overlay_status_var.get())
 
     def inspect_current_source() -> None:
         preview.delete(0, "end")
@@ -1380,7 +1630,7 @@ def launch_gui() -> int:
     frame.grid(sticky="nsew")
     frame.columnconfigure(1, weight=1)
     frame.rowconfigure(6, weight=1)
-    frame.rowconfigure(9, weight=1)
+    frame.rowconfigure(10, weight=1)
 
     ttk.Label(frame, text="Source type").grid(row=0, column=0, sticky="w")
     mode_row = ttk.Frame(frame)
@@ -1479,11 +1729,43 @@ def launch_gui() -> int:
     )
     scene_scope_combo.grid(row=9, column=1, sticky="ew", pady=(8, 0))
 
-    ttk.Button(frame, text="Build / Sync", command=build_or_sync_now).grid(row=7, column=1, sticky="e", pady=(14, 0))
+    overlay_box = ttk.LabelFrame(frame, text="Front Overlay", padding=10)
+    overlay_box.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(14, 0))
+    overlay_box.columnconfigure(1, weight=1)
 
-    ttk.Label(frame, text="Preview").grid(row=8, column=0, sticky="nw", pady=(14, 0))
+    ttk.Label(overlay_box, text="Scene").grid(row=0, column=0, sticky="w")
+    overlay_scene_combo = ttk.Combobox(
+        overlay_box,
+        textvariable=front_overlay_scene_var,
+        state="readonly",
+        values=[label for _value, label, _path, _subscene in FRONT_OVERLAY_SCENES],
+    )
+    overlay_scene_combo.grid(row=0, column=1, sticky="ew")
+    overlay_scene_combo.bind("<<ComboboxSelected>>", lambda _event: update_front_overlay_folder())
+
+    ttk.Label(overlay_box, text="Frame count").grid(row=1, column=0, sticky="w", pady=(8, 0))
+    ttk.Entry(overlay_box, textvariable=front_overlay_frame_count_var).grid(row=1, column=1, sticky="ew", pady=(8, 0))
+
+    ttk.Label(overlay_box, text="FPS").grid(row=2, column=0, sticky="w", pady=(8, 0))
+    ttk.Entry(overlay_box, textvariable=front_overlay_fps_var).grid(row=2, column=1, sticky="ew", pady=(8, 0))
+
+    ttk.Label(overlay_box, text="Target folder").grid(row=3, column=0, sticky="nw", pady=(8, 0))
+    ttk.Label(overlay_box, textvariable=front_overlay_folder_var, wraplength=620, justify="left").grid(row=3, column=1, sticky="w", pady=(8, 0))
+
+    overlay_buttons = ttk.Frame(overlay_box)
+    overlay_buttons.grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))
+    ttk.Button(overlay_buttons, text="Open Folder", command=open_front_overlay_folder).pack(side="left")
+    ttk.Button(overlay_buttons, text="Inspect Folder", command=inspect_front_overlay_now).pack(side="left", padx=(8, 0))
+    ttk.Button(overlay_buttons, text="Sync Front Overlay", command=sync_front_overlay_now).pack(side="left", padx=(8, 0))
+    ttk.Button(overlay_buttons, text="Remove Front Overlay", command=remove_front_overlay_now).pack(side="left", padx=(8, 0))
+
+    ttk.Label(overlay_box, textvariable=front_overlay_status_var, wraplength=620, justify="left").grid(row=5, column=0, columnspan=2, sticky="w", pady=(10, 0))
+
+    ttk.Button(frame, text="Build / Sync", command=build_or_sync_now).grid(row=8, column=1, sticky="e", pady=(14, 0))
+
+    ttk.Label(frame, text="Preview").grid(row=9, column=0, sticky="nw", pady=(14, 0))
     preview_frame = ttk.Frame(frame)
-    preview_frame.grid(row=8, column=1, sticky="nsew", pady=(14, 0))
+    preview_frame.grid(row=9, column=1, sticky="nsew", pady=(14, 0))
     preview_frame.columnconfigure(0, weight=1)
     preview_frame.rowconfigure(0, weight=1)
     preview = tk.Listbox(preview_frame, height=12)
@@ -1494,15 +1776,16 @@ def launch_gui() -> int:
     preview_info = ttk.Label(preview_frame, text="No source loaded.")
     preview_info.grid(row=1, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
-    ttk.Label(frame, text="Log").grid(row=9, column=0, sticky="nw", pady=(14, 0))
+    ttk.Label(frame, text="Log").grid(row=10, column=0, sticky="nw", pady=(14, 0))
     log_box = tk.Text(frame, height=10, wrap="word", state="disabled")
-    log_box.grid(row=9, column=1, sticky="nsew", pady=(14, 0))
+    log_box.grid(row=10, column=1, sticky="nsew", pady=(14, 0))
 
     status_bar = ttk.Label(root, textvariable=status_var, relief="sunken", anchor="w", padding=(8, 4))
     status_bar.grid(row=1, column=0, sticky="ew")
 
     set_mode("folder")
     update_sync_target_ui()
+    update_front_overlay_folder()
     root.mainloop()
     return 0
 

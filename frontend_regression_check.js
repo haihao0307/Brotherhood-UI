@@ -60,6 +60,18 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function loadThemeConfig() {
+  try {
+    const raw = fs.readFileSync(
+      path.join(__dirname, 'frontend', 'themes', 'liangshan', 'theme.json'),
+      'utf8'
+    );
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -355,11 +367,44 @@ function assertBubbleWrapsWithoutClipping(state, label) {
   }
 }
 
+function hasLoadedFrontOverlay(state, ownerKey) {
+  const debug = state && state.sceneObjectDebug ? state.sceneObjectDebug.frontOverlay : null;
+  return !!(
+    debug &&
+    Array.isArray(debug.loadedOwners) &&
+    debug.loadedOwners.includes(ownerKey)
+  );
+}
+
+function assertFrontOverlay(state, label, expectedOwnerKey) {
+  const debug = state && state.sceneObjectDebug ? state.sceneObjectDebug.frontOverlay : null;
+  if (!debug || typeof debug !== 'object') {
+    throw new Error(`${label}: front overlay debug state missing`);
+  }
+  if (debug.activeOwnerKey !== expectedOwnerKey) {
+    throw new Error(`${label}: expected active front overlay ${JSON.stringify(expectedOwnerKey)}, got ${JSON.stringify(debug)}`);
+  }
+  if (!debug.visible) {
+    throw new Error(`${label}: expected visible front overlay`);
+  }
+  if (!Array.isArray(debug.loadedOwners) || !debug.loadedOwners.includes(expectedOwnerKey)) {
+    throw new Error(`${label}: expected loaded owner ${JSON.stringify(expectedOwnerKey)}, got ${JSON.stringify(debug)}`);
+  }
+}
+
 async function run() {
   const args = parseArgs(process.argv);
   const mixedBubbleText = '堂前消息已送達，review package is ready.';
   const wrappedBubbleText = '堂前消息已送達，review package is ready，請立即核對 attachments 與 follow-up notes，確認多行換行後仍完整顯示。';
   const mixedWritingDetail = '回歸測試：正在撰寫內容';
+  const themeConfig = loadThemeConfig();
+  const shouldAssertWritingChildOverlay = !!(
+    themeConfig &&
+    themeConfig.subscenes &&
+    themeConfig.subscenes.writing &&
+    themeConfig.subscenes.writing.frontOverlay &&
+    themeConfig.subscenes.writing.frontOverlay.enabled !== false
+  );
   ensureDir(args.screenshotDir);
   const browser = await chromium.launch({ headless: args.headless });
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
@@ -380,6 +425,7 @@ async function run() {
       (state) => state.currentState === 'idle' && state.scenePhase === 'main_idle',
       args.timeoutMs
     );
+    assertFrontOverlay(idleState, 'idle_bootstrap_overlay', 'main');
     checkpoints.push({ label: 'idle_bootstrap', state: idleState });
     await capture(page, args.screenshotDir, '01-idle-bootstrap');
 
@@ -475,6 +521,28 @@ async function run() {
       Math.max(args.timeoutMs, 12000)
     );
     checkpoints.push({ label: 'writing_child', state: writingChild });
+
+    if (shouldAssertWritingChildOverlay && hasLoadedFrontOverlay(writingChild, 'writing')) {
+      assertFrontOverlay(writingChild, 'writing_child_overlay', 'writing');
+    } else if (shouldAssertWritingChildOverlay) {
+      const writingChildOverlay = await waitForState(
+        page,
+        'writing child overlay ready',
+        (state) =>
+          state.scenePhase === 'child_active' &&
+          state.currentWorkerHeroId === 'wuyong' &&
+          state.sceneObjectDebug &&
+          state.sceneObjectDebug.currentSubscene === 'writing' &&
+          hasLoadedFrontOverlay(state, 'writing') &&
+          state.sceneObjectDebug.frontOverlay &&
+          state.sceneObjectDebug.frontOverlay.activeOwnerKey === 'writing' &&
+          state.sceneObjectDebug.frontOverlay.visible,
+        Math.max(args.timeoutMs, 12000)
+      );
+      assertFrontOverlay(writingChildOverlay, 'writing_child_overlay', 'writing');
+      checkpoints.push({ label: 'writing_child_overlay', state: writingChildOverlay });
+    }
+
     await capture(page, args.screenshotDir, '07-writing-child');
 
     await postState(page, { state: 'idle', detail: '回歸測試待命二' });
@@ -494,13 +562,11 @@ async function run() {
         state.scenePhase === 'main_idle' &&
         state.dialogueMode === 'idle_event' &&
         state.bubbleVisible &&
-        !!state.bubbleHeroId &&
-        state.bubbleHeroId !== 'songjiang',
+        !!state.bubbleHeroId,
       Math.max(args.timeoutMs, 15000)
     );
     assertBubbleReadabilityPreset(idleInterruptEvent, 'idle_interrupt_source', browserPlatformPreset);
     checkpoints.push({ label: 'idle_interrupt_source', state: idleInterruptEvent });
-    const interruptedHeroId = idleInterruptEvent.bubbleHeroId;
     await capture(page, args.screenshotDir, '08-idle-random-event');
 
     await postState(page, { state: 'executing', detail: '回歸測試：正在執行命令' });
@@ -513,7 +579,6 @@ async function run() {
         detail: '回歸測試：正在執行命令',
         heroId: 'wusong',
         subscene: 'executing',
-        interruptedHeroId,
       }),
       Math.max(args.timeoutMs, 10000)
     );

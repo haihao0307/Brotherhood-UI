@@ -110,6 +110,69 @@ def load_meta(path: Path) -> dict[str, Any] | None:
         return None
 
 
+def validate_front_overlay(node: dict[str, Any] | None, label: str, errors: list[str], warnings: list[str]) -> None:
+    if not isinstance(node, dict) or node.get("enabled") is False:
+        return
+
+    if "framesPath" in node and node.get("framesPath") is not None and not isinstance(node.get("framesPath"), str):
+        errors.append(f"{label}: invalid frontOverlay config")
+        return
+    if "filePattern" in node and node.get("filePattern") is not None and not isinstance(node.get("filePattern"), str):
+        errors.append(f"{label}: invalid frontOverlay config")
+        return
+
+    frames_path = str(node.get("framesPath") or "").strip().replace("\\", "/").strip("/")
+    raw_file_pattern = node.get("filePattern")
+    file_pattern = raw_file_pattern.strip() if isinstance(raw_file_pattern, str) else ""
+    if not file_pattern:
+        file_pattern = "Front_{index}.png"
+    if "{index}" not in file_pattern:
+        errors.append(f"{label}: invalid frontOverlay config")
+        return
+
+    def parse_whole_number(name: str, default: int | None = None) -> int:
+        if name not in node or node.get(name) is None:
+            if default is not None:
+                return default
+            raise ValueError(name)
+        raw_value = node.get(name)
+        if isinstance(raw_value, bool):
+            raise ValueError(name)
+        numeric_value = float(raw_value)
+        if not numeric_value.is_integer():
+            raise ValueError(name)
+        return int(numeric_value)
+
+    try:
+        start_index = parse_whole_number("startIndex", 1)
+        zero_pad = parse_whole_number("zeroPad", 3)
+        frame_count = parse_whole_number("frameCount")
+        fps = parse_whole_number("fps")
+    except (TypeError, ValueError):
+        errors.append(f"{label}: invalid frontOverlay config")
+        return
+
+    if not frames_path or start_index < 1 or zero_pad < 1 or frame_count < 1 or fps < 1:
+        errors.append(f"{label}: invalid frontOverlay config")
+        return
+
+    overlay_root = THEME_ROOT / frames_path
+    if not overlay_root.exists() or not overlay_root.is_dir():
+        errors.append(f"{label}: missing front overlay directory {overlay_root}")
+        return
+
+    for index in range(frame_count):
+        frame_number = str(start_index + index).zfill(zero_pad)
+        frame_name = file_pattern.replace("{index}", frame_number)
+        frame_path = overlay_root / frame_name
+        if not frame_path.exists():
+            errors.append(f"{label}: missing front overlay frame {frame_path}")
+            continue
+        size = read_png_size(frame_path)
+        if size != (1280, 720):
+            errors.append(f"{label}: expected 1280x720 front overlay frame, got {size} for {frame_path}")
+
+
 def expected_worker_state(actor_states: dict[str, Any]) -> list[str]:
     return [name for name in actor_states.keys() if name not in {"idle", "walking"}]
 
@@ -147,6 +210,7 @@ def analyze_theme(theme_path: Path) -> tuple[list[str], list[str], dict[str, Any
 
     require_file(normalize_asset_ref(data.get("assets", {}).get("bg")), "assets.bg")
     require_file(normalize_asset_ref(data.get("mainScene", {}).get("background")), "mainScene.background")
+    validate_front_overlay(data.get("mainScene", {}).get("frontOverlay"), "mainScene.frontOverlay", errors, warnings)
 
     main_hero = data.get("mainHero", {})
     main_hero_id = str(main_hero.get("id") or "songjiang")
@@ -269,6 +333,7 @@ def analyze_theme(theme_path: Path) -> tuple[list[str], list[str], dict[str, Any
                 errors.append(f"main object asset {sprite_key} must live under {main_props_root}, got {path}")
 
     for state_name, subscene in (data.get("subscenes") or {}).items():
+        validate_front_overlay(subscene.get("frontOverlay"), f"subscenes.{state_name}.frontOverlay", errors, warnings)
         actor_id = str(subscene.get("actorId") or "")
         if actor_id != main_hero_id and actor_id not in support_heroes:
             errors.append(f"subscenes.{state_name}: actorId {actor_id} does not exist")

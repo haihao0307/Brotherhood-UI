@@ -230,6 +230,23 @@ python sync_agent_theme.py --input .\frames --output .\hero-spritesheet.png
 python sync_agent_theme.py --input .\frames --output .\hero-spritesheet.png --theme-json .\frontend\themes\liangshan\theme.json --sync
 ```
 
+#### Add a scene front overlay from the GUI
+
+1. Run `.\launch_sync_agent_theme_gui.bat`
+2. In `Front Overlay`, choose the scene
+3. Click `Open Folder`
+4. Put `Front_001.png`, `Front_002.png`, ... into the opened folder
+5. Fill `Frame count` and `FPS`
+6. Click `Inspect Folder`
+7. Click `Sync Front Overlay`
+
+Rules:
+
+- frames must be `1280x720`
+- names must be contiguous `Front_###.png`
+- the GUI writes `frontOverlay` into `theme.json` automatically
+- `Remove Front Overlay` removes that scene's `frontOverlay` config and deletes PNG frames in the selected scene folder only
+
 #### Replace assets and validate them
 
 Run the fixed checks:
@@ -572,6 +589,23 @@ CLI 範例：
 python sync_agent_theme.py --input .\frames --output .\hero-spritesheet.png
 python sync_agent_theme.py --input .\frames --output .\hero-spritesheet.png --theme-json .\frontend\themes\liangshan\theme.json --sync
 ```
+
+#### 用 GUI 掛場景前景 overlay
+
+1. 執行 `.\launch_sync_agent_theme_gui.bat`
+2. 在 `Front Overlay` 區塊選擇場景
+3. 點 `Open Folder`
+4. 把 `Front_001.png`、`Front_002.png`…… 放進打開的資料夾
+5. 填 `Frame count` 和 `FPS`
+6. 點 `Inspect Folder`
+7. 點 `Sync Front Overlay`
+
+規則：
+
+- 每張圖都必須是 `1280x720`
+- 檔名必須連號為 `Front_###.png`
+- GUI 會自動把 `frontOverlay` 寫進 `theme.json`
+- `Remove Front Overlay` 會只刪除當前場景的 `frontOverlay` 設定與該資料夾下的 PNG 幀圖
 
 #### 替換素材後跑固定驗收
 

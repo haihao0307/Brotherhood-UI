@@ -16,6 +16,28 @@
   const resolveStateAsset = runtimeHelpers.resolveStateAsset;
   const buildRuntimeTheme = runtimeHelpers.buildRuntimeTheme;
 
+  function padNumber(value, digits) {
+    return String(Math.max(0, Number(value) || 0)).padStart(Math.max(1, Number(digits) || 1), '0');
+  }
+
+  function normalizePathSegment(value) {
+    return String(value || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  }
+
+  function extractThemeStaticRoot(asset) {
+    const node = normalizeAssetRef(asset);
+    const candidates = [];
+    if (node && typeof node.png === 'string') candidates.push(node.png.replace(/\\/g, '/'));
+    if (node && typeof node.webp === 'string') candidates.push(node.webp.replace(/\\/g, '/'));
+
+    for (let i = 0; i < candidates.length; i++) {
+      const match = candidates[i].match(/^(\/static\/themes\/[^/]+)/);
+      if (match) return match[1];
+    }
+
+    return '';
+  }
+
   function ThemeEngine(themeConfig, opts) {
     this.themeConfig = themeConfig || {};
     this.runtime = buildRuntimeTheme(themeConfig || {});
@@ -45,6 +67,15 @@
     this.idleEventEmphasis = {};
     this.supportRoamingEnabled = false;
     this.supportRoamingState = {};
+
+    this.frontOverlayNode = null;
+    this.activeFrontOverlayOwner = null;
+    this.activeFrontOverlayConfig = null;
+    this.frontOverlayFrameIndex = 0;
+    this.nextFrontOverlayFrameAt = 0;
+    this.loadedFrontOverlayOwners = {};
+    this.failedFrontOverlayOwners = {};
+    this.pendingFrontOverlayOwners = {};
   }
 
   ThemeEngine.prototype.preload = function (scene) {
@@ -62,6 +93,8 @@
       if (!url) return;
       scene.load.image('scene_bg_' + state, url);
     });
+
+    this.preloadFrontOverlayForScene(scene, 'idle');
 
     this.preloadActorStates(scene, 'main', runtime.mainHero);
     Object.keys(runtime.supportHeroes).forEach((heroId) => {
@@ -93,12 +126,206 @@
     });
   };
 
+  ThemeEngine.prototype.resolveFrontOverlayOwnerKey = function (sceneState) {
+    if (!sceneState || sceneState === 'idle' || sceneState === 'main') return 'main';
+    return String(sceneState);
+  };
+
+  ThemeEngine.prototype.resolveFrontOverlayConfig = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    if (owner === 'main') return this.runtime.mainScene.frontOverlay || null;
+    const subscene = this.runtime.subscenes[owner];
+    return subscene ? (subscene.frontOverlay || null) : null;
+  };
+
+  ThemeEngine.prototype.isFrontOverlayLoaded = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    return !!this.loadedFrontOverlayOwners[owner];
+  };
+
+  ThemeEngine.prototype.markFrontOverlayLoaded = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    this.loadedFrontOverlayOwners[owner] = true;
+    delete this.failedFrontOverlayOwners[owner];
+    this.clearPendingFrontOverlayLoad(owner);
+  };
+
+  ThemeEngine.prototype.markFrontOverlayFailed = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    this.failedFrontOverlayOwners[owner] = true;
+    delete this.loadedFrontOverlayOwners[owner];
+    this.clearPendingFrontOverlayLoad(owner);
+    if (this.activeFrontOverlayOwner === owner) this.hideFrontOverlay();
+  };
+
+  ThemeEngine.prototype.clearPendingFrontOverlayLoad = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    const pending = this.pendingFrontOverlayOwners[owner];
+    if (pending && pending.scene && pending.scene.load && typeof pending.scene.load.off === 'function') {
+      if (pending.onLoadError) pending.scene.load.off('loaderror', pending.onLoadError);
+      safeArray(pending.fileCompleteEvents).forEach((eventName) => {
+        const handler = pending.onFileCompleteByEvent ? pending.onFileCompleteByEvent[eventName] : null;
+        if (handler) pending.scene.load.off(eventName, handler);
+      });
+    }
+    delete this.pendingFrontOverlayOwners[owner];
+  };
+
+  ThemeEngine.prototype.buildFrontOverlayFrameSpecs = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    const config = this.resolveFrontOverlayConfig(sceneState);
+    const themeRootAsset = owner === 'main'
+      ? this.runtime.mainScene.background
+      : ((this.runtime.subscenes[owner] && this.runtime.subscenes[owner].background) || this.runtime.mainScene.background);
+    const themeStaticRoot = extractThemeStaticRoot(themeRootAsset);
+    if (!config || !themeStaticRoot) return [];
+
+    const framesPath = normalizePathSegment(config.framesPath);
+    if (!framesPath) return [];
+
+    const basePath = themeStaticRoot + '/' + framesPath;
+    const frameSpecs = [];
+    for (let index = 0; index < config.frameCount; index++) {
+      const frameNumber = config.startIndex + index;
+      const fileName = String(config.filePattern || 'Front_{index}.png')
+        .split('{index}')
+        .join(padNumber(frameNumber, config.zeroPad));
+      const assetRef = {
+        png: basePath + '/' + fileName
+      };
+      frameSpecs.push({
+        owner: owner,
+        textureKey: 'front_overlay_' + owner + '_' + padNumber(index, 3),
+        assetRef: assetRef,
+        url: resolveAssetUrl(assetRef, this.version, this.supportsWebP)
+      });
+    }
+    return frameSpecs;
+  };
+
+  ThemeEngine.prototype.preloadFrontOverlayForScene = function (scene, sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    if (!scene || this.isFrontOverlayLoaded(owner)) return;
+
+    const frameSpecs = this.buildFrontOverlayFrameSpecs(sceneState);
+    if (!frameSpecs.length) {
+      return;
+    }
+
+    frameSpecs.forEach((frameSpec) => {
+      scene.load.image(frameSpec.textureKey, frameSpec.url);
+    });
+
+    this.markFrontOverlayLoaded(owner);
+  };
+
+  ThemeEngine.prototype.areFrontOverlayFramesReady = function (sceneState) {
+    const scene = this.scene;
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    if (this.failedFrontOverlayOwners[owner] || !scene || !scene.textures || typeof scene.textures.exists !== 'function') {
+      return false;
+    }
+    const frameSpecs = this.buildFrontOverlayFrameSpecs(owner);
+    if (!frameSpecs.length) return false;
+    for (let i = 0; i < frameSpecs.length; i++) {
+      if (!scene.textures.exists(frameSpecs[i].textureKey)) return false;
+    }
+    return true;
+  };
+
+  ThemeEngine.prototype.ensureFrontOverlayReady = function (sceneState) {
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    if (this.failedFrontOverlayOwners[owner]) return false;
+    if (this.isFrontOverlayLoaded(owner)) return true;
+    if (!this.areFrontOverlayFramesReady(owner)) return false;
+    this.markFrontOverlayLoaded(owner);
+    return true;
+  };
+
+  ThemeEngine.prototype.isFrontOverlayOwnerActive = function (owner) {
+    const resolvedOwner = this.resolveFrontOverlayOwnerKey(owner);
+    if (resolvedOwner === 'main') {
+      return this.sceneMode === 'main_idle' || this.sceneMode === 'main_handoff';
+    }
+    return this.sceneMode === 'child_active' && this.currentSubscene === resolvedOwner;
+  };
+
+  ThemeEngine.prototype.queueFrontOverlayLoad = function (sceneState) {
+    const scene = this.scene;
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    const config = this.resolveFrontOverlayConfig(sceneState);
+    if (!scene || !scene.load || !config || this.isFrontOverlayLoaded(owner) || this.failedFrontOverlayOwners[owner] || this.pendingFrontOverlayOwners[owner]) {
+      return;
+    }
+
+    const frameSpecs = this.buildFrontOverlayFrameSpecs(sceneState);
+    if (!frameSpecs.length) {
+      this.markFrontOverlayFailed(owner);
+      return;
+    }
+
+    const pending = {
+      owner: owner,
+      scene: scene,
+      remainingKeys: {},
+      fileCompleteEvents: [],
+      onFileCompleteByEvent: {},
+      onLoadError: null
+    };
+    frameSpecs.forEach((frameSpec) => {
+      pending.remainingKeys[frameSpec.textureKey] = true;
+    });
+
+    const settleLoaded = () => {
+      if (this.pendingFrontOverlayOwners[owner] !== pending) return;
+      this.markFrontOverlayLoaded(owner);
+      if (this.isFrontOverlayOwnerActive(owner)) this.showFrontOverlayForScene(owner);
+    };
+    const settleFailed = () => {
+      if (this.pendingFrontOverlayOwners[owner] !== pending) return;
+      this.markFrontOverlayFailed(owner);
+    };
+
+    this.pendingFrontOverlayOwners[owner] = pending;
+    frameSpecs.forEach((frameSpec) => {
+      scene.load.image(frameSpec.textureKey, frameSpec.url);
+    });
+
+    if (typeof scene.load.on === 'function' && typeof scene.load.off === 'function') {
+      pending.onLoadError = function (file) {
+        const failedKey = file && file.key ? String(file.key) : '';
+        if (!failedKey || !pending.remainingKeys[failedKey]) return;
+        settleFailed();
+      };
+      scene.load.on('loaderror', pending.onLoadError);
+
+      frameSpecs.forEach((frameSpec) => {
+        const eventName = 'filecomplete-image-' + frameSpec.textureKey;
+        const handler = function () {
+          if (this.pendingFrontOverlayOwners[owner] !== pending) return;
+          delete pending.remainingKeys[frameSpec.textureKey];
+          if (!Object.keys(pending.remainingKeys).length) settleLoaded();
+        }.bind(this);
+        pending.fileCompleteEvents.push(eventName);
+        pending.onFileCompleteByEvent[eventName] = handler;
+        scene.load.on(eventName, handler);
+      });
+    } else if (this.areFrontOverlayFramesReady(owner)) {
+      settleLoaded();
+    }
+
+    if (typeof scene.load.start === 'function') {
+      scene.load.start();
+    }
+  };
+
   ThemeEngine.prototype.create = function (scene) {
     this.scene = scene;
 
     this.bg = scene.add.image(640, 360, 'scene_bg_main').setOrigin(0.5);
     this.fitBackground(this.bg);
     this.bg.setDepth(0);
+    this.ensureFrontOverlayNode(scene);
 
     this.createMainCast(scene);
     this.createChildActor(scene);
@@ -111,6 +338,105 @@
     });
 
     this.enterMainIdle();
+  };
+
+  ThemeEngine.prototype.ensureFrontOverlayNode = function (scene) {
+    if (this.frontOverlayNode) return this.frontOverlayNode;
+    const initialTexture = scene && scene.textures && typeof scene.textures.exists === 'function' && scene.textures.exists('scene_bg_main')
+      ? 'scene_bg_main'
+      : '__MISSING';
+    this.frontOverlayNode = scene.add.image(640, 360, initialTexture).setOrigin(0.5, 0.5);
+    this.frontOverlayNode.setDepth(5000);
+    this.frontOverlayNode.setVisible(false);
+    return this.frontOverlayNode;
+  };
+
+  ThemeEngine.prototype.showFrontOverlayForScene = function (sceneState) {
+    const scene = this.scene;
+    const owner = this.resolveFrontOverlayOwnerKey(sceneState);
+    const config = this.resolveFrontOverlayConfig(sceneState);
+    const frameSpecs = this.buildFrontOverlayFrameSpecs(sceneState);
+    const node = scene ? this.ensureFrontOverlayNode(scene) : null;
+
+    if (!scene || !node) {
+      this.hideFrontOverlay();
+      return;
+    }
+    if (!config) {
+      this.hideFrontOverlay();
+      return;
+    }
+    if (!frameSpecs.length) {
+      this.hideFrontOverlay();
+      return;
+    }
+    if (!this.ensureFrontOverlayReady(owner)) {
+      this.hideFrontOverlay();
+      return;
+    }
+
+    const firstFrame = frameSpecs[0];
+    if (!scene.textures.exists(firstFrame.textureKey)) {
+      this.markFrontOverlayFailed(owner);
+      return;
+    }
+
+    node.setTexture(firstFrame.textureKey, 0);
+    node.setPosition(640, 360);
+    node.setDepth(typeof config.depth === 'number' ? config.depth : 5000);
+    node.setVisible(true);
+
+    this.activeFrontOverlayOwner = owner;
+    this.activeFrontOverlayConfig = config;
+    this.frontOverlayFrameIndex = 0;
+    this.nextFrontOverlayFrameAt = (scene.time && typeof scene.time.now === 'number' ? scene.time.now : 0) + (1000 / Math.max(1, Number(config.fps || 1)));
+    delete this.failedFrontOverlayOwners[owner];
+  };
+
+  ThemeEngine.prototype.hideFrontOverlay = function () {
+    if (this.frontOverlayNode) this.frontOverlayNode.setVisible(false);
+    this.activeFrontOverlayOwner = null;
+    this.activeFrontOverlayConfig = null;
+    this.frontOverlayFrameIndex = 0;
+    this.nextFrontOverlayFrameAt = 0;
+  };
+
+  ThemeEngine.prototype.updateFrontOverlay = function (time) {
+    if (!this.frontOverlayNode || !this.frontOverlayNode.visible || !this.activeFrontOverlayConfig || !this.activeFrontOverlayOwner) return;
+    if (!this.nextFrontOverlayFrameAt || time < this.nextFrontOverlayFrameAt) return;
+
+    const owner = this.activeFrontOverlayOwner;
+    const frameSpecs = this.buildFrontOverlayFrameSpecs(owner);
+    const config = this.activeFrontOverlayConfig;
+    if (!frameSpecs.length) {
+      this.markFrontOverlayFailed(owner);
+      return;
+    }
+
+    const frameDuration = 1000 / Math.max(1, Number(config.fps || 1));
+    while (this.activeFrontOverlayOwner === owner && this.nextFrontOverlayFrameAt && time >= this.nextFrontOverlayFrameAt) {
+      let nextIndex = this.frontOverlayFrameIndex + 1;
+      if (nextIndex >= frameSpecs.length) {
+        if (config.loop === false) {
+          nextIndex = frameSpecs.length - 1;
+          this.frontOverlayFrameIndex = nextIndex;
+          this.frontOverlayNode.setTexture(frameSpecs[nextIndex].textureKey, 0);
+          this.nextFrontOverlayFrameAt = 0;
+          return;
+        }
+        nextIndex = 0;
+      }
+
+      const nextFrame = frameSpecs[nextIndex];
+      if (!this.scene.textures.exists(nextFrame.textureKey)) {
+        this.markFrontOverlayFailed(owner);
+        return;
+      }
+
+      this.frontOverlayFrameIndex = nextIndex;
+      this.frontOverlayNode.setTexture(nextFrame.textureKey, 0);
+      this.nextFrontOverlayFrameAt += frameDuration;
+    }
   };
 
   ThemeEngine.prototype.createMainCast = function (scene) {
@@ -434,6 +760,7 @@
     this.target = { x: this.mainActor.x, y: this.mainActor.y };
     this.moving = false;
     this.resetSupportRoaming(this.scene && this.scene.time ? this.scene.time.now : 0);
+    this.showFrontOverlayForScene('idle');
   };
 
   ThemeEngine.prototype.enterMainHandoff = function (state) {
@@ -482,6 +809,7 @@
     this.target = { x: this.mainActor.x, y: this.mainActor.y };
     this.moving = false;
     this.setSupportRoamingEnabled(false, this.scene && this.scene.time ? this.scene.time.now : 0);
+    this.showFrontOverlayForScene('idle');
   };
 
   ThemeEngine.prototype.enterChildScene = function (state) {
@@ -531,6 +859,8 @@
     this.target = { x: this.childActor.x, y: this.childActor.y };
     this.moving = false;
     this.setSupportRoamingEnabled(false, this.scene && this.scene.time ? this.scene.time.now : 0);
+    this.queueFrontOverlayLoad(state);
+    this.showFrontOverlayForScene(state);
   };
 
   ThemeEngine.prototype.setTargetForState = function (state, options) {
@@ -622,6 +952,13 @@
     return {
       sceneMode: this.sceneMode,
       currentSubscene: this.currentSubscene,
+      frontOverlay: {
+        activeOwnerKey: this.activeFrontOverlayOwner,
+        loadedOwners: Object.keys(this.loadedFrontOverlayOwners).sort(),
+        failedOwners: Object.keys(this.failedFrontOverlayOwners).sort(),
+        frameIndex: this.frontOverlayFrameIndex,
+        visible: !!(this.frontOverlayNode && this.frontOverlayNode.visible)
+      },
       supportRoamingEnabled: this.supportRoamingEnabled,
       supportRoamingDebug: roamingDebug,
       mainObjectCount: safeArray(this.mainObjects).length,
@@ -685,6 +1022,8 @@
         : 1.04;
       this.mainActor.setScale(baseScale * (1 + (extraScale - 1) * ((Math.sin(time * 0.01) + 1) * 0.5)));
     }
+
+    this.updateFrontOverlay(time);
   };
 
   if (typeof roamingApi.applyRoamingAPI === 'function') {

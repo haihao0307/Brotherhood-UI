@@ -20,6 +20,7 @@ office-agent-state.json
 .runtime/
 .superpowers/
 .worktrees/
+docs/superpowers/
 # keep join-keys.json in repo for first-run demo
 *.log
 *.out
@@ -33,7 +34,6 @@ backend.log
 frontend/office_bg.png
 progress.md
 output/
-.worktrees/
 docs/asset-status.md
 docs/asset-acceptance-report.md
 docs/asset-acceptance-report.json

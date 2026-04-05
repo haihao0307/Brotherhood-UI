@@ -92,6 +92,58 @@
     };
   }
 
+  function normalizeFrontOverlay(node) {
+    if (!node || typeof node !== 'object') return null;
+    if (node.enabled === false) return null;
+
+    const framesPath = typeof node.framesPath === 'string' ? node.framesPath.trim() : '';
+    const hasExplicitFilePattern = Object.prototype.hasOwnProperty.call(node, 'filePattern') && node.filePattern != null;
+    if (hasExplicitFilePattern && typeof node.filePattern !== 'string') return null;
+    const trimmedFilePattern = hasExplicitFilePattern ? node.filePattern.trim() : '';
+    const filePattern = trimmedFilePattern ? trimmedFilePattern : 'Front_{index}.png';
+
+    function parseOverlayWholeNumber(name, fallbackValue) {
+      const hasExplicitValue = Object.prototype.hasOwnProperty.call(node, name) && node[name] != null;
+      if (!hasExplicitValue) return fallbackValue;
+      if (typeof node[name] === 'boolean') return null;
+      const numericValue = Number(node[name]);
+      if (!Number.isInteger(numericValue)) return null;
+      return numericValue;
+    }
+
+    const startIndex = parseOverlayWholeNumber('startIndex', 1);
+    const zeroPad = parseOverlayWholeNumber('zeroPad', 3);
+    const frameCount = parseOverlayWholeNumber('frameCount', null);
+    const fps = parseOverlayWholeNumber('fps', null);
+
+    if (
+      !framesPath ||
+      filePattern.indexOf('{index}') === -1 ||
+      startIndex == null ||
+      startIndex < 1 ||
+      zeroPad == null ||
+      zeroPad < 1 ||
+      frameCount == null ||
+      frameCount < 1 ||
+      fps == null ||
+      fps < 1
+    ) {
+      return null;
+    }
+
+    return {
+      enabled: true,
+      framesPath: framesPath,
+      filePattern: filePattern,
+      startIndex: startIndex,
+      zeroPad: zeroPad,
+      frameCount: frameCount,
+      fps: fps,
+      loop: node.loop !== false,
+      depth: Number.isFinite(Number(node.depth)) ? Number(node.depth) : 5000
+    };
+  }
+
   function assetMatchesScope(assetNode, scopeRoot) {
     if (!scopeRoot) return true;
     const node = normalizeAssetRef(assetNode);
@@ -191,6 +243,7 @@
         state: state,
         background: normalizeAssetRef(node.background),
         propsRoot: String(node.propsRoot || ''),
+        frontOverlay: normalizeFrontOverlay(node.frontOverlay),
         actorId: String(node.actorId),
         animationState: String(node.animationState || state),
         x: Number(node.x),
@@ -209,6 +262,7 @@
         background: normalizeAssetRef(mainSceneNode.background || ((cfg.assets && cfg.assets.bg) || null)),
         propsRoot: String(mainSceneNode.propsRoot || ''),
         handoff: (mainSceneNode.handoff && typeof mainSceneNode.handoff === 'object') ? mainSceneNode.handoff : {},
+        frontOverlay: normalizeFrontOverlay(mainSceneNode.frontOverlay),
         supportRoaming: {
           enabled: supportRoamingNode.enabled !== false,
           startAfterInitialSeed: supportRoamingNode.startAfterInitialSeed !== false,
@@ -247,6 +301,7 @@
     normalizeAssetRef: normalizeAssetRef,
     resolveAssetUrl: resolveAssetUrl,
     normalizeSpriteAsset: normalizeSpriteAsset,
+    normalizeFrontOverlay: normalizeFrontOverlay,
     assetMatchesScope: assetMatchesScope,
     makeStateTextureKey: makeStateTextureKey,
     parseActorStates: parseActorStates,
